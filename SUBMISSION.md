@@ -16,7 +16,7 @@ than practising law: it provides general information, never a legal conclusion.
 The stack is deliberately small and server-first: Next.js 15 App Router with Server Actions and React
 Server Components, Supabase for Postgres, `pgvector`, row-level security and magic-link auth, and
 Google Gemini for every AI capability. Five integration points are explicit — `gemini-2.5-flash` with
-structured JSON output powers clause simplification and risk classification; `text-embedding-004`
+structured JSON output powers clause simplification and risk classification; `gemini-embedding-001`
 with `pgvector` powers retrieval-augmented question answering that cites the clauses it used; a
 second structured call powers the two-document material-terms comparison; and the lawyer-prep sheet
 is assembled from stored analysis. Every model response is validated with zod before it is stored,
@@ -30,7 +30,7 @@ rather than replacing a licensed attorney.
 | ---------- | ----------------------------------------------------------------------------------------------------------- |
 | Repository | <https://github.com/SabarishR08/lexclear>                                                                   |
 | Stack      | Next.js 15, TypeScript (strict), Supabase Postgres + pgvector, Google Gemini, Tailwind-free hand-rolled CSS |
-| GenAI      | `gemini-2.5-flash` (structured JSON), `text-embedding-004` (768-dimension vectors)                          |
+| GenAI      | `gemini-2.5-flash` (structured JSON), `gemini-embedding-001` (768-dimension vectors)                        |
 | Author     | Sabarish R — <sabarishr1087@gmail.com>                                                                      |
 | License    | MIT                                                                                                         |
 

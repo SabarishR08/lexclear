@@ -6,6 +6,7 @@
 import {
   GoogleGenerativeAI,
   SchemaType,
+  type EmbedContentRequest,
   type EnumStringSchema,
   type Schema,
 } from "@google/generative-ai";
@@ -16,8 +17,21 @@ import { DISCLAIMER } from "@/lib/disclaimer";
 import type { ClauseAnalysis, MaterialTermComparison } from "@/lib/types";
 
 const CHAT_MODEL = "gemini-2.5-flash";
-// text-embedding-004 returns 768-dimension vectors, matching document_chunks.embedding.
-const EMBEDDING_MODEL = "text-embedding-004";
+// text-embedding-004 is retired (embedContent returns 404), so this is the current
+// embedder. It defaults to 3072 dimensions, hence the explicit width below.
+const EMBEDDING_MODEL = "gemini-embedding-001";
+// Must match document_chunks.embedding vector(768) in supabase/schema.sql.
+const EMBEDDING_DIMENSIONS = 768;
+
+/**
+ * The pinned SDK's EmbedContentRequest type predates outputDimensionality, but
+ * embedContent forwards the object to the REST API unchanged —
+ * formatEmbedContentInput returns object input as-is and the body is
+ * JSON.stringify'd — so declaring the extra field here is enough to send it.
+ * Both embeddings and queries must use the same width or pgvector comparisons
+ * fail outright.
+ */
+type EmbeddingRequest = EmbedContentRequest & { outputDimensionality: number };
 
 const MAX_DOCUMENT_CHARS = 45_000;
 const MAX_COMPARISON_CHARS = 20_000;
@@ -136,9 +150,13 @@ async function analyzeClauseBatch(
 
 export async function embedText(content: string) {
   const model = client().getGenerativeModel({ model: EMBEDDING_MODEL });
-  const result = await withRetry(() =>
-    model.embedContent({ content: { role: "user", parts: [{ text: content }] } }),
-  );
+  const request: EmbeddingRequest = {
+    content: { role: "user", parts: [{ text: content }] },
+    outputDimensionality: EMBEDDING_DIMENSIONS,
+  };
+  // Truncated Matryoshka vectors are safe here: pgvector's <=> is cosine
+  // distance, which is invariant to vector magnitude.
+  const result = await withRetry(() => model.embedContent(request));
   return result.embedding.values;
 }
 

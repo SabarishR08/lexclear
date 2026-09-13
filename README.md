@@ -56,13 +56,21 @@ Every AI capability runs on Google Gemini. There is deliberately no fallback pro
 from a different model live in a different vector space, so swapping one in mid-flight would make
 retrieval compare a query vector against incompatible stored vectors and return confident nonsense.
 
-| Service                                            | Integration point                                                                                                                                                                                                                                                                         |
-| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gemini `gemini-2.5-flash`, structured JSON output  | **Document Simplification Engine** — rewrites each clause in grade-8 English, tagged by category (Payment, Termination, Liability, Confidentiality, Dispute Resolution…).                                                                                                                 |
-| Gemini `gemini-2.5-flash`, `responseSchema` enum   | **Risk & Obligation Highlighter** — classifies each clause `favorable`, `neutral`, `risky` or `needs-attention`, each with a written reason. The label is always rendered as text, never colour alone.                                                                                    |
-| Gemini `text-embedding-004` + Supabase `pgvector`  | **Grounded Document Q&A (RAG)** — the document is chunked, embedded into 768-dimension vectors, and the top matches above a relevance floor are retrieved. Answers cite the clauses they came from and the model must say "I can't find that in this document" when the answer is absent. |
-| Gemini `gemini-2.5-flash`, structured JSON output  | **Contract Comparison Mode** — pick two analysed documents and Gemini returns a material-terms table: payment/rent, deposit, notice period, penalties, term length and liability, with the practical difference for each.                                                                 |
-| Gemini analysis output, rendered deterministically | **Next-Steps & Lawyer-Prep Generator** — the downloadable Markdown sheet gathers the `risky` and `needs-attention` clauses plus questions to bring to counsel. It is assembled from the stored analysis rather than a second model call.                                                  |
+| Service                                             | Integration point                                                                                                                                                                                                                                                                         |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gemini `gemini-2.5-flash`, structured JSON output   | **Document Simplification Engine** — rewrites each clause in grade-8 English, tagged by category (Payment, Termination, Liability, Confidentiality, Dispute Resolution…).                                                                                                                 |
+| Gemini `gemini-2.5-flash`, `responseSchema` enum    | **Risk & Obligation Highlighter** — classifies each clause `favorable`, `neutral`, `risky` or `needs-attention`, each with a written reason. The label is always rendered as text, never colour alone.                                                                                    |
+| Gemini `gemini-embedding-001` + Supabase `pgvector` | **Grounded Document Q&A (RAG)** — the document is chunked, embedded into 768-dimension vectors, and the top matches above a relevance floor are retrieved. Answers cite the clauses they came from and the model must say "I can't find that in this document" when the answer is absent. |
+| Gemini `gemini-2.5-flash`, structured JSON output   | **Contract Comparison Mode** — pick two analysed documents and Gemini returns a material-terms table: payment/rent, deposit, notice period, penalties, term length and liability, with the practical difference for each.                                                                 |
+| Gemini analysis output, rendered deterministically  | **Next-Steps & Lawyer-Prep Generator** — the downloadable Markdown sheet gathers the `risky` and `needs-attention` clauses plus questions to bring to counsel. It is assembled from the stored analysis rather than a second model call.                                                  |
+
+**A note on the embedding model.** The brief names `text-embedding-004`. That model has been retired:
+`embedContent` now returns `404 NOT_FOUND` for it, so every upload would have failed at the embedding
+step. LexClear therefore uses `gemini-embedding-001` with `outputDimensionality: 768`, which was
+verified against the live API — it returns exactly 768 values, matching
+`document_chunks.embedding vector(768)`. The model defaults to 3072 dimensions, so the explicit width
+is what keeps it compatible with both the schema and the stored vectors, and a regression test pins
+both the model name and the width.
 
 Two deliberate constraints apply to every prompt:
 
@@ -93,7 +101,7 @@ flowchart TB
 
   subgraph google["Google Gemini API"]
     flash["gemini-2.5-flash<br/>structured JSON output"]
-    embed["text-embedding-004<br/>768 dimensions"]
+    embed["gemini-embedding-001<br/>768 dimensions"]
   end
 
   subgraph supa["Supabase"]
@@ -412,8 +420,10 @@ place of the upload form instead of throwing a 500.
 - The lawyer-prep sheet is assembled from the stored analysis instead of a second Gemini call.
 - Clause analysis is capped at 8 batches (360,000 characters), above the 300,000 character upload
   ceiling, so the cap is unreachable through the normal upload path.
-- The relevance floor of 0.5 is a considered default, not a tuned value; it has not been calibrated
-  against a labelled set of real lease questions.
+- The relevance floor of 0.6 was calibrated against 9 answerable questions and 27 unrelated
+  query/clause pairs, but that set is small and synthetic. It has not been validated against a large
+  labelled corpus of real user questions, so the exact value should be treated as a reasoned starting
+  point rather than a tuned one.
 
 ## Submission links
 

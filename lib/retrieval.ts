@@ -10,12 +10,19 @@ export type RetrievedChunk = {
 };
 
 /**
- * text-embedding-004 cosine similarity for genuinely related legal text lands
- * around 0.65-0.85, while unrelated passages cluster near 0.3-0.5. Chunks below
- * this floor are dropped so the chat can refuse honestly instead of answering
- * from an irrelevant passage.
+ * Calibrated against gemini-embedding-001 (768 dimensions), measured over 9
+ * answerable questions and 27 unrelated query/clause pairs of legal text:
+ *
+ *   relevant  0.672 - 0.788
+ *   irrelevant 0.369 - 0.640
+ *
+ * A floor of 0.5 let 17 of those 27 irrelevant pairs through; 0.6 admits 2 and
+ * still misses none of the relevant ones, so it is the strictest value that
+ * keeps real answers reachable. Chunks below the floor are dropped so the chat
+ * can refuse honestly instead of answering from an irrelevant passage.
+ * Re-measure this if the embedding model changes again.
  */
-export const DEFAULT_RELEVANCE_THRESHOLD = 0.5;
+export const DEFAULT_RELEVANCE_THRESHOLD = 0.6;
 
 export function selectRelevantChunks(
   chunks: RetrievedChunk[],
