@@ -167,3 +167,8 @@ instead of the upload form.
 - **3:20–4:00:** Close on the engineering: RLS on every table, rate limiting and byte-level upload
   checks, `axe-core` accessibility checks plus keyboard support in CI, and a clear boundary —
   LexClear assists users, it never replaces a licensed lawyer.
+
+## License
+
+[MIT](LICENSE) © 2026 Sabarish R. The licence covers this code, not legal advice of any kind —
+LexClear ships no lawyer-client relationship.
