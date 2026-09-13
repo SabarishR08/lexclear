@@ -9,6 +9,13 @@ import { useId, useState, useTransition } from "react";
 import { askDocument } from "@/app/documents/[id]/actions";
 import { InlineDisclaimer } from "@/components/disclaimer";
 
+const SUGGESTED_QUESTIONS = [
+  "What are the notice requirements to terminate or cancel?",
+  "What are the payment and late fee terms?",
+  "What obligations or liability do I take on?",
+  "What happens to the deposit or confidential information?",
+];
+
 export function DocumentChat({ documentId }: { documentId: string }) {
   const inputId = useId();
   const statusId = useId();
@@ -16,9 +23,8 @@ export function DocumentChat({ documentId }: { documentId: string }) {
   const [result, setResult] = useState<{ kind: "answer" | "error"; text: string } | null>(null);
   const [busy, startTransition] = useTransition();
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const trimmed = question.trim();
+  function submitQuestion(text: string) {
+    const trimmed = text.trim();
     if (trimmed.length < 2) {
       setResult({ kind: "error", text: "Please enter a question about this document." });
       return;
@@ -33,6 +39,16 @@ export function DocumentChat({ documentId }: { documentId: string }) {
     });
   }
 
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    submitQuestion(question);
+  }
+
+  function handlePromptClick(prompt: string) {
+    setQuestion(prompt);
+    submitQuestion(prompt);
+  }
+
   return (
     <section className="panel" aria-labelledby="chat-heading">
       <h2 id="chat-heading">Ask this document</h2>
@@ -40,6 +56,24 @@ export function DocumentChat({ documentId }: { documentId: string }) {
         Answers are grounded only in retrieved text from this document and cite the clauses they
         came from.
       </p>
+
+      <div className="chat-suggestions" role="group" aria-label="Suggested questions">
+        <span className="suggestions-label">Try asking:</span>
+        <div className="suggestion-chips">
+          {SUGGESTED_QUESTIONS.map((prompt) => (
+            <button
+              key={prompt}
+              type="button"
+              className="chip-btn"
+              disabled={busy}
+              onClick={() => handlePromptClick(prompt)}
+            >
+              {prompt}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <form onSubmit={handleSubmit}>
         <label htmlFor={inputId}>Your question</label>
         <textarea

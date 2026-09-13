@@ -11,3 +11,8 @@ playwright-report
 test-results
 *.log
 *.tsbuildinfo
+
+.vercel
+.env*
+.freebuff
+supabase/.temp

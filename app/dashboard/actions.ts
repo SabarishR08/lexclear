@@ -12,6 +12,7 @@ import { takeToken } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { retrySchema, uploadSchema } from "@/lib/validation";
+import { SAMPLE_CONTRACTS, type SampleContractType } from "@/lib/fixtures";
 
 /** Keeps a long contract from firing dozens of embedding requests at once. */
 const EMBED_CONCURRENCY = 3;
@@ -157,4 +158,44 @@ export async function retryAnalysis(documentId: string) {
   revalidatePath("/dashboard");
   revalidatePath(`/documents/${documentId}`);
   return { success: true as const };
+}
+
+/**
+ * Loads a curated legal agreement fixture so evaluators or demo viewers
+ * can test LexClear without uploading their own PDF/DOCX.
+ */
+export async function loadSampleAgreement(type: SampleContractType) {
+  const sample = SAMPLE_CONTRACTS[type];
+  if (!sample) return { error: "Unknown sample document type." };
+
+  const user = await getCurrentUser();
+  if (!user) return { error: "Please sign in first." };
+
+  if (!takeToken(`upload:${user.id}`, { capacity: 4, refillPerMinute: 4 })) {
+    return { error: "Too many actions in a row. Try again in a moment." };
+  }
+
+  const supabase = await createClient();
+  const { data: document, error } = await supabase
+    .from("documents")
+    .insert({
+      user_id: user.id,
+      title: sample.title,
+      raw_text: sample.rawText,
+      status: "processing",
+    })
+    .select("id")
+    .single();
+
+  if (error || !document) return { error: "Could not create sample document." };
+
+  try {
+    await indexDocument(supabase, document.id, sample.rawText);
+  } catch {
+    await supabase.from("documents").update({ status: "failed" }).eq("id", document.id);
+    return { error: FAILURE_MESSAGE };
+  }
+
+  revalidatePath("/dashboard");
+  return { success: true as const, documentId: document.id };
 }

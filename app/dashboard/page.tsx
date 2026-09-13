@@ -5,6 +5,7 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SampleDocumentLoader } from "@/components/sample-document-loader";
 import { UploadForm } from "@/components/upload-form";
 import { getCurrentUser } from "@/lib/auth";
 import { loadLibrary } from "@/lib/documents";
@@ -40,7 +41,10 @@ export default async function DashboardPage() {
       </div>
 
       {connected ? (
-        <UploadForm />
+        <>
+          <UploadForm />
+          <SampleDocumentLoader />
+        </>
       ) : (
         <p className="error" role="alert">
           Supabase is not configured for this deployment yet, so uploads are disabled.

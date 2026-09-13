@@ -6,10 +6,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ClauseExplorer } from "@/components/clause-explorer";
 import { DocumentChat } from "@/components/document-chat";
 import { InlineDisclaimer } from "@/components/disclaimer";
 import { RetryAnalysis } from "@/components/retry-analysis";
-import { RiskBadge, riskColors } from "@/components/risk-badge";
 import { loadDocument } from "@/lib/documents";
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -38,15 +38,20 @@ export default async function DocumentPage({ params }: PageProps) {
         </Link>
       </nav>
 
-      <h1 className="document-title">{document.title}</h1>
+      <div className="document-page-header">
+        <div>
+          <h1 className="document-title">{document.title}</h1>
+          <p className="muted">
+            Plain-language review, risk breakdown, and grounded Q&amp;A.{" "}
+            <a className="link" href={`/documents/${id}/export`} download>
+              Download Markdown Lawyer Prep Sheet
+            </a>
+            .
+          </p>
+        </div>
+      </div>
+
       <InlineDisclaimer />
-      <p className="muted">
-        Risk labels are written out as text as well as colour.{" "}
-        <a className="link" href={`/documents/${id}/export`} download>
-          Download the lawyer prep sheet
-        </a>
-        .
-      </p>
 
       {document.status === "processing" ? (
         <p className="notice-inline" role="status">
@@ -56,33 +61,7 @@ export default async function DocumentPage({ params }: PageProps) {
       {document.status === "failed" ? <RetryAnalysis documentId={id} /> : null}
 
       <div className="reader">
-        <section className="panel" aria-labelledby="clause-guide-heading">
-          <h2 id="clause-guide-heading">Clear clause guide</h2>
-          {clauses.length ? (
-            clauses.map((clause) => (
-              <article
-                className="demo-doc"
-                key={clause.id}
-                style={{ borderLeftColor: riskColors[clause.riskLevel] }}
-              >
-                <RiskBadge level={clause.riskLevel} category={clause.category} />
-                <h3>{clause.clauseRef}</h3>
-                <p>
-                  <strong>Original:</strong> {clause.clauseText}
-                </p>
-                <p>
-                  <strong>In plain language:</strong> {clause.plainText}
-                </p>
-                <p className="muted">
-                  <strong>Why:</strong> {clause.reason}
-                </p>
-              </article>
-            ))
-          ) : (
-            <p className="muted">No clauses have been analysed yet.</p>
-          )}
-        </section>
-
+        <ClauseExplorer documentId={id} documentTitle={document.title} clauses={clauses} />
         <DocumentChat documentId={id} />
       </div>
     </main>
