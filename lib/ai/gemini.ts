@@ -5,6 +5,7 @@ import {
   type Schema,
 } from "@google/generative-ai";
 import { parseMaterialTerms, parseRiskAnalysis } from "@/lib/ai/parsing";
+import { withRetry } from "@/lib/ai/retry";
 import { DISCLAIMER } from "@/lib/disclaimer";
 import type { ClauseAnalysis, MaterialTermComparison } from "@/lib/types";
 
@@ -68,28 +69,30 @@ const materialTermSchema: Schema = {
 
 export async function analyzeClauses(text: string): Promise<ClauseAnalysis[]> {
   const model = client().getGenerativeModel({ model: CHAT_MODEL });
-  const result = await model.generateContent({
-    contents: [
-      {
-        role: "user",
-        parts: [
-          {
-            text: [
-              "Analyze this legal document as general information only.",
-              "Split it into its important clauses, explain each in grade-8 English, and never give a legal conclusion.",
-              UNTRUSTED_INPUT_RULE,
-              DISCLAIMER,
-              "",
-              "<document>",
-              text.slice(0, MAX_DOCUMENT_CHARS),
-              "</document>",
-            ].join("\n"),
-          },
-        ],
-      },
-    ],
-    generationConfig: { responseMimeType: "application/json", responseSchema: clauseSchema },
-  });
+  const result = await withRetry(() =>
+    model.generateContent({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: [
+                "Analyze this legal document as general information only.",
+                "Split it into its important clauses, explain each in grade-8 English, and never give a legal conclusion.",
+                UNTRUSTED_INPUT_RULE,
+                DISCLAIMER,
+                "",
+                "<document>",
+                text.slice(0, MAX_DOCUMENT_CHARS),
+                "</document>",
+              ].join("\n"),
+            },
+          ],
+        },
+      ],
+      generationConfig: { responseMimeType: "application/json", responseSchema: clauseSchema },
+    }),
+  );
 
   let payload: unknown;
   try {
@@ -102,9 +105,9 @@ export async function analyzeClauses(text: string): Promise<ClauseAnalysis[]> {
 
 export async function embedText(content: string) {
   const model = client().getGenerativeModel({ model: EMBEDDING_MODEL });
-  const result = await model.embedContent({
-    content: { role: "user", parts: [{ text: content }] },
-  });
+  const result = await withRetry(() =>
+    model.embedContent({ content: { role: "user", parts: [{ text: content }] } }),
+  );
   return result.embedding.values;
 }
 
@@ -114,19 +117,21 @@ export async function embedText(content: string) {
  */
 export async function groundedAnswer(question: string, context: string) {
   const model = client().getGenerativeModel({ model: CHAT_MODEL });
-  const result = await model.generateContent(
-    [
-      "Answer ONLY using the retrieved document excerpts below.",
-      'If the answer is absent, say "I can\'t find that in this document."',
-      "Cite the relevant clause labels in brackets. Do not offer legal advice.",
-      UNTRUSTED_INPUT_RULE,
-      "",
-      "<document>",
-      context,
-      "</document>",
-      "",
-      `QUESTION: ${question}`,
-    ].join("\n"),
+  const result = await withRetry(() =>
+    model.generateContent(
+      [
+        "Answer ONLY using the retrieved document excerpts below.",
+        'If the answer is absent, say "I can\'t find that in this document."',
+        "Cite the relevant clause labels in brackets. Do not offer legal advice.",
+        UNTRUSTED_INPUT_RULE,
+        "",
+        "<document>",
+        context,
+        "</document>",
+        "",
+        `QUESTION: ${question}`,
+      ].join("\n"),
+    ),
   );
   return result.response.text();
 }
@@ -156,29 +161,34 @@ export async function compareMaterialTerms(
       .join("\n")
       .slice(0, MAX_COMPARISON_CHARS);
 
-  const result = await model.generateContent({
-    contents: [
-      {
-        role: "user",
-        parts: [
-          {
-            text: [
-              "Compare these two documents as general information only.",
-              "Return the material commercial terms a person should compare: payment or rent, deposit, notice period, penalties, term length, and liability.",
-              "For each term, quote what each document says in documentA and documentB, explain the practical difference, and label how one-sided it is.",
-              'If a term is absent from a document, say "not addressed".',
-              UNTRUSTED_INPUT_RULE,
-              DISCLAIMER,
-              "",
-              render(documentA),
-              render(documentB),
-            ].join("\n"),
-          },
-        ],
+  const result = await withRetry(() =>
+    model.generateContent({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: [
+                "Compare these two documents as general information only.",
+                "Return the material commercial terms a person should compare: payment or rent, deposit, notice period, penalties, term length, and liability.",
+                "For each term, quote what each document says in documentA and documentB, explain the practical difference, and label how one-sided it is.",
+                'If a term is absent from a document, say "not addressed".',
+                UNTRUSTED_INPUT_RULE,
+                DISCLAIMER,
+                "",
+                render(documentA),
+                render(documentB),
+              ].join("\n"),
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: materialTermSchema,
       },
-    ],
-    generationConfig: { responseMimeType: "application/json", responseSchema: materialTermSchema },
-  });
+    }),
+  );
 
   let payload: unknown;
   try {

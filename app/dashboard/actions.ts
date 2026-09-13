@@ -5,7 +5,7 @@ import pdf from "pdf-parse";
 import { revalidatePath } from "next/cache";
 import { analyzeClauses, embedText } from "@/lib/ai/gemini";
 import { getCurrentUser } from "@/lib/auth";
-import { chunkText } from "@/lib/chunking";
+import { chunkText, isWithinIndexLimit } from "@/lib/chunking";
 import { mapWithConcurrency } from "@/lib/concurrency";
 import { detectUploadKind } from "@/lib/files";
 import { takeToken } from "@/lib/rate-limit";
@@ -46,6 +46,13 @@ export async function uploadDocument(formData: FormData) {
   }
   if (!rawText.trim()) {
     return { error: "We could not extract readable text from this file." };
+  }
+  // Refuse before storing anything: indexing a document this long would fire
+  // hundreds of embedding requests and trip the rate limit mid-analysis.
+  if (!isWithinIndexLimit(rawText)) {
+    return {
+      error: "This document is longer than LexClear can analyse in one pass. Try splitting it up.",
+    };
   }
 
   const supabase = await createClient();

@@ -37,6 +37,19 @@ PDF/DOCX → Server Action (zod + magic-byte validation) → text extraction
 
 Two documents plus their stored analysis → Gemini comparison call → material-terms table.
 
+## Resilience and cost control
+
+- Embedding requests run **3 at a time** instead of one per chunk in parallel, so a long contract
+  cannot trip its own rate limit.
+- Every Gemini call retries on `429`, `500`, `502`, `503` and `504`, honouring the server's own
+  `retryDelay` hint where it is present and otherwise backing off exponentially (800ms base, doubled
+  per attempt, capped at 15s) with equal jitter so parallel workers do not retry in lockstep. A
+  permanent failure such as `400` or `401` is never retried, and neither is a malformed response,
+  because repeating those only burns quota.
+- Both Gemini-calling Server Actions are also rate-limited per user by an in-memory token bucket.
+- A document longer than 300,000 characters is refused before anything is stored, rather than
+  silently analysed in part or fanned out into hundreds of embedding requests.
+
 ## Security and privacy
 
 - Row-level security on every table, scoped to `auth.uid()`; no service-role key ever reaches the
@@ -61,12 +74,13 @@ Two documents plus their stored analysis → Gemini comparison call → material
 ## Testing
 
 ```bash
-npm test        # Vitest unit suites (31 tests)
+npm test        # Vitest unit suites (47 tests)
 npm run test:e2e  # Playwright: accessibility, route protection, upload failure paths
 ```
 
-Unit coverage: chunking, model-output validation, relevance selection, magic-byte detection, the
-rate-limit bucket, bounded-concurrency mapping and the upload/chat/compare schemas.
+Unit coverage: chunking and the index-size guard, model-output validation, relevance selection,
+magic-byte detection, retry classification and backoff (including the server hint and the delay
+cap), the rate-limit bucket, bounded-concurrency mapping and the upload/chat/compare schemas.
 
 Four Playwright specs drive the signed-in upload flow (keyboard reaching the file input, a plain
 text file, a file that only claims to be a PDF, and an oversized file). They are skipped unless a
@@ -126,6 +140,9 @@ instead of the upload form.
   yet; re-uploading re-embeds from scratch (no embedding cache).
 - Answers stream only after completion; responses are not token-streamed.
 - The lawyer-prep sheet is assembled from the stored analysis instead of a second Gemini call.
+- Clause analysis reads only the first 45,000 characters of a document. The brief calls for "one
+  structured-output call per clause batch", so a long document currently gets its later clauses
+  indexed for Q&A but not explained in the clause guide.
 
 ## Submission links
 
