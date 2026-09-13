@@ -1,0 +1,1 @@
+export function cosineSimilarity(a: number[], b: number[]) { if (a.length !== b.length || !a.length) return 0; const dot = a.reduce((sum, value, index) => sum + value * b[index], 0); const magnitude = (v: number[]) => Math.sqrt(v.reduce((sum, value) => sum + value * value, 0)); return dot / (magnitude(a) * magnitude(b) || 1); }
