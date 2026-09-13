@@ -2,6 +2,13 @@
   "name": "lexclear",
   "version": "0.1.0",
   "private": true,
+  "description": "Plain-language clause explanations, risk labels, grounded Q&A and document comparison for leases, contracts and NDAs.",
+  "author": "Sabarish R <sabarishr1087@gmail.com> (https://sabarishr08.vercel.app)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SabarishR08/lexclear.git"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

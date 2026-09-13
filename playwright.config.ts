@@ -1,3 +1,8 @@
+// LexClear — AI for Legal Assistance & Access (PromptWars 2026 submission)
+// Author: Sabarish R <sabarishr1087@gmail.com>
+// Portfolio: https://sabarishr08.vercel.app | LinkedIn: https://www.linkedin.com/in/sabarishr08 | GitHub: https://github.com/SabarishR08
+// Original work by the author. Please do not resubmit it as your own — see LICENSE.
+
 import { defineConfig, devices } from "@playwright/test";
 
 const port = Number(process.env.E2E_PORT ?? 3100);

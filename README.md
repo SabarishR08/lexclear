@@ -1,3 +1,10 @@
+<!--
+LexClear — AI for Legal Assistance & Access (PromptWars 2026 submission)
+Author: Sabarish R <sabarishr1087@gmail.com>
+Portfolio: https://sabarishr08.vercel.app | LinkedIn: https://www.linkedin.com/in/sabarishr08 | GitHub: https://github.com/SabarishR08
+Original work by the author. Please do not resubmit it as your own — see LICENSE.
+-->
+
 # LexClear — Legal Document Clarity & Access Assistant
 
 [![CI](https://github.com/SabarishR08/lexclear/actions/workflows/ci.yml/badge.svg)](https://github.com/SabarishR08/lexclear/actions/workflows/ci.yml)
@@ -40,6 +47,7 @@ refuses to answer when the document does not contain the answer.
 - [Known limitations](#known-limitations)
 - [Submission links](#submission-links)
 - [Four-minute demo script](#four-minute-demo-script)
+- [Author](#author)
 - [License](#license)
 
 ## Every AI capability and where it plugs in
@@ -423,6 +431,21 @@ place of the upload form instead of throwing a 500.
 - **3:20–4:00:** Close on the engineering: RLS on every table, rate limiting and byte-level upload
   checks, `axe-core` accessibility checks plus keyboard support in CI, and a clear boundary —
   LexClear assists users, it never replaces a licensed lawyer.
+
+## Author
+
+Built by **Sabarish R**.
+
+|           |                                           |
+| --------- | ----------------------------------------- |
+| Email     | <sabarishr1087@gmail.com>                 |
+| Portfolio | <https://sabarishr08.vercel.app>          |
+| LinkedIn  | <https://www.linkedin.com/in/sabarishr08> |
+| GitHub    | <https://github.com/SabarishR08>          |
+
+Every source file in this repository carries the same attribution in its header comment. Note that
+comments can be stripped in seconds — the MIT licence below is the part with legal force, and it
+requires anyone reusing this code to keep the copyright notice.
 
 ## License
 
