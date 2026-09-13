@@ -16,3 +16,4 @@ test-results
 .env*
 .freebuff
 supabase/.temp
+.neon
