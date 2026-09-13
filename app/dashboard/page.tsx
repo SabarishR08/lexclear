@@ -1,5 +1,67 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { UploadForm } from "./upload-form";
-export default async function DashboardPage() { const supabase = await createClient(); const { data: { user } } = await supabase.auth.getUser(); const { data: documents } = user ? await supabase.from("documents").select("id,title,status,created_at").order("created_at", { ascending: false }) : { data: [] };
-  return <main className="page dashboard"><nav className="nav"><Link className="brand" href="/">Lex<span>Clear</span></Link><Link className="btn secondary" href="/login">{user ? "Account" : "Sign in"}</Link></nav><div className="dashboard-head"><div><h1 style={{fontSize:"3rem"}}>Your documents</h1><p className="muted">Private, plain-language support for your legal paperwork.</p></div></div><UploadForm /><section className="documents" aria-label="Your uploaded documents">{documents?.map((doc) => <Link className="doc-card" href={`/documents/${doc.id}`} key={doc.id}><strong>{doc.title}</strong><p><span className="tag">{doc.status}</span></p><small>{new Date(doc.created_at).toLocaleDateString()}</small></Link>)}{!documents?.length && <p className="muted">No documents yet. Upload one to get started.</p>}</section></main>; }
+import { UploadForm } from "@/components/upload-form";
+import { getCurrentUser } from "@/lib/auth";
+import { loadLibrary } from "@/lib/documents";
+
+export const metadata: Metadata = { title: "Your documents" };
+
+export default async function DashboardPage() {
+  const [user, { documents, connected }] = await Promise.all([getCurrentUser(), loadLibrary()]);
+
+  return (
+    <main className="page dashboard" id="main">
+      <nav className="nav" aria-label="Primary">
+        <Link className="brand" href="/">
+          Lex<span>Clear</span>
+        </Link>
+        {user ? (
+          <span className="muted">{user.email}</span>
+        ) : (
+          <Link className="btn secondary" href="/login">
+            Sign in
+          </Link>
+        )}
+      </nav>
+
+      <div className="dashboard-head">
+        <div>
+          <h1 className="dashboard-title">Your documents</h1>
+          <p className="muted">Private, plain-language support for your legal paperwork.</p>
+        </div>
+        <Link className="btn secondary" href="/compare">
+          Compare two documents
+        </Link>
+      </div>
+
+      {connected ? (
+        <UploadForm />
+      ) : (
+        <p className="error" role="alert">
+          Supabase is not configured for this deployment yet, so uploads are disabled.
+        </p>
+      )}
+
+      <section className="documents" aria-labelledby="library-heading">
+        <h2 id="library-heading" className="section-heading">
+          Library
+        </h2>
+        {documents.length ? (
+          <ul className="document-list">
+            {documents.map((document) => (
+              <li key={document.id}>
+                <Link className="doc-card" href={`/documents/${document.id}`}>
+                  <strong>{document.title}</strong>
+                  <span className="tag">{document.status}</span>
+                  <small>{new Date(document.created_at).toLocaleDateString()}</small>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">No documents yet. Upload a PDF or DOCX to get started.</p>
+        )}
+      </section>
+    </main>
+  );
+}

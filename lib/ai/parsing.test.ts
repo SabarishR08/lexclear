@@ -1,3 +1,48 @@
 import { describe, expect, it } from "vitest";
-import { parseRiskAnalysis } from "./parsing";
-describe("parseRiskAnalysis", () => { it("accepts the allowed risk labels", () => expect(parseRiskAnalysis([{ clauseText:"x", plainText:"y", category:"Term", riskLevel:"needs-attention", reason:"z", clauseRef:"1" }])[0].riskLevel).toBe("needs-attention")); it("rejects invented labels", () => expect(() => parseRiskAnalysis([{ clauseText:"x", plainText:"y", category:"Term", riskLevel:"danger", reason:"z", clauseRef:"1" }])).toThrow()); });
+import { parseMaterialTerms, parseRiskAnalysis } from "./parsing";
+
+const validClause = {
+  clauseText: "Either party may terminate on 30 days' notice.",
+  plainText: "Either side can end the agreement with a month's notice.",
+  category: "Termination",
+  riskLevel: "needs-attention",
+  reason: "Short notice period.",
+  clauseRef: "Clause 8",
+};
+
+describe("parseRiskAnalysis", () => {
+  it("accepts a well-formed model response", () => {
+    expect(parseRiskAnalysis([validClause])).toHaveLength(1);
+  });
+
+  it("rejects a risk level the UI cannot render", () => {
+    expect(() => parseRiskAnalysis([{ ...validClause, riskLevel: "catastrophic" }])).toThrow();
+  });
+
+  it("rejects output that is missing a field", () => {
+    const { reason: _reason, ...incomplete } = validClause;
+    expect(() => parseRiskAnalysis([incomplete])).toThrow();
+  });
+});
+
+describe("parseMaterialTerms", () => {
+  it("accepts a comparison row", () => {
+    const terms = parseMaterialTerms([
+      {
+        term: "Deposit",
+        documentA: "Two months' rent",
+        documentB: "One month's rent",
+        difference: "The first lease ties up an extra month of cash.",
+        riskLevel: "risky",
+      },
+    ]);
+
+    expect(terms[0].term).toBe("Deposit");
+  });
+
+  it("rejects a row without both document values", () => {
+    expect(() =>
+      parseMaterialTerms([{ term: "Deposit", documentA: "Two months", riskLevel: "neutral" }]),
+    ).toThrow();
+  });
+});

@@ -1,2 +1,46 @@
-import { createClient } from "@/lib/supabase/server";
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) { const { id } = await params; const supabase = await createClient(); const { data: doc } = await supabase.from("documents").select("title,document_analysis(clause_ref,plain_text,risk_level,reason)").eq("id", id).single(); if (!doc) return new Response("Not found", { status: 404 }); const lines = [`# Lawyer Prep Sheet: ${doc.title}`, "", "> LexClear provides general information, not legal advice. Consult a licensed attorney for your specific situation.", "", "## Clauses to discuss"]; for (const item of (doc.document_analysis as { clause_ref:string; plain_text:string; risk_level:string; reason:string }[] ?? [])) if (item.risk_level === "risky" || item.risk_level === "needs-attention") lines.push(`- **${item.clause_ref} — ${item.risk_level}:** ${item.plain_text} _Why:_ ${item.reason}`); lines.push("", "## Questions for a lawyer", "- Does this clause fit my specific situation?", "- What change would reduce my practical risk?"); return new Response(lines.join("\n"), { headers: { "Content-Type": "text/markdown; charset=utf-8", "Content-Disposition": `attachment; filename="${doc.title.replace(/[^a-z0-9]/gi, "-")}-lawyer-prep.md"` } }); }
+import { DISCLAIMER } from "@/lib/disclaimer";
+import { loadDocument } from "@/lib/documents";
+
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const loaded = await loadDocument(id);
+  if (!loaded) return new Response("Not found", { status: 404 });
+
+  const { document, clauses } = loaded;
+  const flagged = clauses.filter(
+    (clause) => clause.riskLevel === "risky" || clause.riskLevel === "needs-attention",
+  );
+
+  const lines = [
+    `# Lawyer prep sheet: ${document.title}`,
+    "",
+    `> ${DISCLAIMER}`,
+    "",
+    "## Clauses to discuss",
+    ...(flagged.length
+      ? flagged.map(
+          (clause) =>
+            `- **${clause.clauseRef} — ${clause.riskLevel}:** ${clause.plainText} _Why:_ ${clause.reason}`,
+        )
+      : ["- No high-risk clauses were flagged in this document."]),
+    "",
+    "## Questions to bring to a licensed attorney",
+    "- Does this clause fit my specific situation?",
+    "- What change would reduce my practical risk?",
+    "- Which obligations or deadlines should I diarise?",
+    "",
+  ];
+
+  const filename =
+    document.title
+      .replace(/[^a-z0-9]+/gi, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "document";
+
+  return new Response(lines.join("\n"), {
+    headers: {
+      "Content-Type": "text/markdown; charset=utf-8",
+      "Content-Disposition": `attachment; filename="${filename}-lawyer-prep.md"`,
+    },
+  });
+}

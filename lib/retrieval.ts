@@ -1,1 +1,24 @@
-export function cosineSimilarity(a: number[], b: number[]) { if (a.length !== b.length || !a.length) return 0; const dot = a.reduce((sum, value, index) => sum + value * b[index], 0); const magnitude = (v: number[]) => Math.sqrt(v.reduce((sum, value) => sum + value * value, 0)); return dot / (magnitude(a) * magnitude(b) || 1); }
+export type RetrievedChunk = {
+  content: string;
+  chunk_index: number;
+  similarity: number;
+};
+
+/**
+ * text-embedding-004 cosine similarity for genuinely related legal text lands
+ * around 0.65-0.85, while unrelated passages cluster near 0.3-0.5. Chunks below
+ * this floor are dropped so the chat can refuse honestly instead of answering
+ * from an irrelevant passage.
+ */
+export const DEFAULT_RELEVANCE_THRESHOLD = 0.5;
+
+export function selectRelevantChunks(
+  chunks: RetrievedChunk[],
+  threshold: number = DEFAULT_RELEVANCE_THRESHOLD,
+  limit = 5,
+): RetrievedChunk[] {
+  return chunks
+    .filter((chunk) => Number.isFinite(chunk.similarity) && chunk.similarity >= threshold)
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, limit);
+}

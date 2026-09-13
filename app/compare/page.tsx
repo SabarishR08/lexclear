@@ -1,3 +1,42 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-export default async function ComparePage() { const supabase = await createClient(); const { data: docs } = await supabase.from("documents").select("id,title").eq("status", "ready"); return <main className="page dashboard"><nav className="nav"><Link className="brand" href="/">Lex<span>Clear</span></Link><Link className="btn secondary" href="/dashboard">Library</Link></nav><h1 style={{fontSize:"2.9rem"}}>Compare documents</h1><p className="lead">Choose two documents to compare material terms like payment, deposit, notice period, and penalties. This is general information, not legal advice.</p><div className="panel"><p className="muted">Comparison analysis is ready to connect after your documents are uploaded. Available documents:</p><ul>{docs?.map((doc) => <li key={doc.id}>{doc.title}</li>)}{!docs?.length && <li>Upload two documents in your library first.</li>}</ul></div></main>; }
+import { CompareForm } from "@/components/compare-form";
+import { loadLibrary } from "@/lib/documents";
+
+export const metadata: Metadata = { title: "Compare documents" };
+
+export default async function ComparePage() {
+  const { documents } = await loadLibrary();
+  const ready = documents.filter((document) => document.status === "ready");
+
+  return (
+    <main className="page dashboard" id="main">
+      <nav className="nav" aria-label="Primary">
+        <Link className="brand" href="/">
+          Lex<span>Clear</span>
+        </Link>
+        <Link className="btn secondary" href="/dashboard">
+          Library
+        </Link>
+      </nav>
+
+      <h1 className="dashboard-title">Compare documents</h1>
+      <p className="lead">
+        Put two leases, offers or NDAs side by side and see who the material terms actually favour.
+      </p>
+
+      {ready.length >= 2 ? (
+        <CompareForm documents={ready} />
+      ) : (
+        <div className="panel">
+          <p className="muted">
+            Comparison needs two analysed documents. You currently have {ready.length} ready.
+          </p>
+          <Link className="btn" href="/dashboard">
+            Upload a document
+          </Link>
+        </div>
+      )}
+    </main>
+  );
+}

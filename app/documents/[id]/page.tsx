@@ -1,6 +1,88 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { DocumentChat } from "./chat";
-const riskStyle = { risky: "#f9d6d1", "needs-attention": "#fbe0d1", neutral: "#e7eee9", favorable: "#d8eee4" } as const;
-export default async function DocumentPage({ params }: { params: Promise<{ id: string }> }) { const { id } = await params; const supabase = await createClient(); const { data: document } = await supabase.from("documents").select("id,title,raw_text").eq("id", id).single(); if (!document) notFound(); const { data: clauses } = await supabase.from("document_analysis").select("*").eq("document_id", id).order("created_at"); return <main className="page dashboard"><nav className="nav"><Link className="brand" href="/">Lex<span>Clear</span></Link><Link className="btn secondary" href="/dashboard">Back to library</Link></nav><h1 style={{fontSize:"2.8rem"}}>{document.title}</h1><p className="muted">General information, not legal advice. Each label includes text, not color alone.</p><div style={{display:"grid",gridTemplateColumns:"minmax(0,1.4fr) minmax(280px,.8fr)",gap:22,alignItems:"start"}}><section className="panel" aria-label="Clause-by-clause analysis"><h2>Clear clause guide</h2>{clauses?.map((clause) => <article key={clause.id} className="demo-doc" style={{borderLeftColor:riskStyle[clause.risk_level as keyof typeof riskStyle]}}><span className="tag" style={{background:riskStyle[clause.risk_level as keyof typeof riskStyle]}}>{clause.risk_level} · {clause.category}</span><h3>{clause.clause_ref}</h3><p><strong>Original:</strong> {clause.clause_text}</p><p><strong>In plain language:</strong> {clause.plain_text}</p><p className="muted"><strong>Why:</strong> {clause.reason}</p></article>)}</section><DocumentChat documentId={id}/></div></main>; }
+import { DocumentChat } from "@/components/document-chat";
+import { InlineDisclaimer } from "@/components/disclaimer";
+import { RiskBadge, riskColors } from "@/components/risk-badge";
+import { loadDocument } from "@/lib/documents";
+
+type PageProps = { params: Promise<{ id: string }> };
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const loaded = await loadDocument(id);
+  return { title: loaded?.document.title ?? "Document" };
+}
+
+export default async function DocumentPage({ params }: PageProps) {
+  const { id } = await params;
+  const loaded = await loadDocument(id);
+  if (!loaded) notFound();
+
+  const { document, clauses } = loaded;
+
+  return (
+    <main className="page dashboard" id="main">
+      <nav className="nav" aria-label="Primary">
+        <Link className="brand" href="/">
+          Lex<span>Clear</span>
+        </Link>
+        <Link className="btn secondary" href="/dashboard">
+          Back to library
+        </Link>
+      </nav>
+
+      <h1 className="document-title">{document.title}</h1>
+      <InlineDisclaimer />
+      <p className="muted">
+        Risk labels are written out as text as well as colour.{" "}
+        <a className="link" href={`/documents/${id}/export`} download>
+          Download the lawyer prep sheet
+        </a>
+        .
+      </p>
+
+      {document.status === "processing" ? (
+        <p className="notice-inline" role="status">
+          Analysis is still running. Refresh in a moment to see the clause guide.
+        </p>
+      ) : null}
+      {document.status === "failed" ? (
+        <p className="error" role="alert">
+          Analysis did not finish for this document. Upload it again to retry.
+        </p>
+      ) : null}
+
+      <div className="reader">
+        <section className="panel" aria-labelledby="clause-guide-heading">
+          <h2 id="clause-guide-heading">Clear clause guide</h2>
+          {clauses.length ? (
+            clauses.map((clause) => (
+              <article
+                className="demo-doc"
+                key={clause.id}
+                style={{ borderLeftColor: riskColors[clause.riskLevel] }}
+              >
+                <RiskBadge level={clause.riskLevel} category={clause.category} />
+                <h3>{clause.clauseRef}</h3>
+                <p>
+                  <strong>Original:</strong> {clause.clauseText}
+                </p>
+                <p>
+                  <strong>In plain language:</strong> {clause.plainText}
+                </p>
+                <p className="muted">
+                  <strong>Why:</strong> {clause.reason}
+                </p>
+              </article>
+            ))
+          ) : (
+            <p className="muted">No clauses have been analysed yet.</p>
+          )}
+        </section>
+
+        <DocumentChat documentId={id} />
+      </div>
+    </main>
+  );
+}

@@ -1,7 +1,26 @@
 import type { Metadata } from "next";
+import { DisclaimerBanner } from "@/components/disclaimer";
 import "./globals.css";
 
-export const metadata: Metadata = { title: "LexClear | Legal document clarity", description: "Plain-language legal document assistance." };
+export const metadata: Metadata = {
+  title: {
+    default: "LexClear | Legal document clarity",
+    template: "%s | LexClear",
+  },
+  description:
+    "Plain-language explanations, risk labels and grounded answers for leases, contracts, offer letters and NDAs.",
+};
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body><div className="notice" role="note">LexClear provides general information, not legal advice. Consult a licensed attorney for your specific situation.</div>{children}</body></html>;
+  return (
+    <html lang="en">
+      <body>
+        <a className="skip-link" href="#main">
+          Skip to main content
+        </a>
+        <DisclaimerBanner />
+        {children}
+      </body>
+    </html>
+  );
 }
