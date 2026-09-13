@@ -44,10 +44,25 @@ rather than replacing a licensed attorney.
 - [x] CI running lint, formatting, typecheck, unit tests, build and Playwright accessibility checks
 - [x] Two-paragraph project description (above)
 - [x] MIT license
-- [ ] Deployed prototype link — deploy to Vercel and fill in below
+- [x] Deployed prototype link — <https://lexclear-three.vercel.app> (needs Supabase and Gemini env vars, see below)
 - [ ] Demo video link — record and fill in below
 
 ## Demo links
 
-- Deployed prototype: _add Vercel URL here_
+- Deployed prototype: <https://lexclear-three.vercel.app>
 - Demo video: _add link here_
+
+## Before recording the demo
+
+The deployed prototype currently reports "Supabase is not configured for this deployment yet", which
+disables uploads, sign-in and the grounded Q&A the demo depends on. On Vercel, set:
+
+| Variable                        | Where to get it                               |
+| ------------------------------- | --------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase project settings, API                |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase project settings, API, `anon` public |
+| `GEMINI_API_KEY`                | Google AI Studio                              |
+
+Then run `supabase/schema.sql` against that project (it enables the `vector` extension, creates the
+tables and the RLS policies) and redeploy. Verify by loading `/dashboard`: it should redirect to
+`/login` rather than showing the not-configured notice.

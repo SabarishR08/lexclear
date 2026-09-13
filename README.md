@@ -417,7 +417,7 @@ place of the upload form instead of throwing a 500.
 
 ## Submission links
 
-- Deployed prototype: add Vercel URL here
+- Deployed prototype: <https://lexclear-three.vercel.app>
 - Demo video: add link here
 
 ## Four-minute demo script
