@@ -9,8 +9,9 @@ import {
   type EnumStringSchema,
   type Schema,
 } from "@google/generative-ai";
-import { parseMaterialTerms, parseRiskAnalysis } from "@/lib/ai/parsing";
+import { mergeClauseBatches, parseMaterialTerms, parseRiskAnalysis } from "@/lib/ai/parsing";
 import { withRetry } from "@/lib/ai/retry";
+import { splitIntoBatches } from "@/lib/chunking";
 import { DISCLAIMER } from "@/lib/disclaimer";
 import type { ClauseAnalysis, MaterialTermComparison } from "@/lib/types";
 
@@ -20,6 +21,8 @@ const EMBEDDING_MODEL = "text-embedding-004";
 
 const MAX_DOCUMENT_CHARS = 45_000;
 const MAX_COMPARISON_CHARS = 20_000;
+// 7 batches x 45k covers the 300k character ceiling enforced at upload.
+const MAX_ANALYSIS_BATCHES = 8;
 
 /**
  * Uploaded contracts are untrusted input. A document can contain text such as
@@ -72,7 +75,27 @@ const materialTermSchema: Schema = {
   },
 };
 
+/**
+ * One structured-output call per batch, so the whole document is explained
+ * rather than only its opening pages. Batches run sequentially: the point of
+ * batching is to avoid a burst of requests, not to create one.
+ */
 export async function analyzeClauses(text: string): Promise<ClauseAnalysis[]> {
+  const batches = splitIntoBatches(text, MAX_DOCUMENT_CHARS).slice(0, MAX_ANALYSIS_BATCHES);
+  const analyses: ClauseAnalysis[][] = [];
+
+  for (const [index, batch] of batches.entries()) {
+    analyses.push(await analyzeClauseBatch(batch, index + 1, batches.length));
+  }
+
+  return mergeClauseBatches(analyses);
+}
+
+async function analyzeClauseBatch(
+  batch: string,
+  part: number,
+  totalParts: number,
+): Promise<ClauseAnalysis[]> {
   const model = client().getGenerativeModel({ model: CHAT_MODEL });
   const result = await withRetry(() =>
     model.generateContent({
@@ -84,11 +107,14 @@ export async function analyzeClauses(text: string): Promise<ClauseAnalysis[]> {
               text: [
                 "Analyze this legal document as general information only.",
                 "Split it into its important clauses, explain each in grade-8 English, and never give a legal conclusion.",
+                totalParts > 1
+                  ? `This is part ${part} of ${totalParts} of one document. Analyze only the clauses present in this part and keep the document's own clause references.`
+                  : "",
                 UNTRUSTED_INPUT_RULE,
                 DISCLAIMER,
                 "",
                 "<document>",
-                text.slice(0, MAX_DOCUMENT_CHARS),
+                batch,
                 "</document>",
               ].join("\n"),
             },

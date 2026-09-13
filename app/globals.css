@@ -265,6 +265,10 @@ h2 {
   margin-top: 34px;
 }
 
+.retry {
+  margin: 18px 0;
+}
+
 .section-heading {
   font-size: 1.35rem;
 }

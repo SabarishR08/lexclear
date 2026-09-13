@@ -16,6 +16,43 @@ export function isWithinIndexLimit(text: string): boolean {
   return text.length <= MAX_INDEXED_CHARS;
 }
 
+/**
+ * Splits text into prompt-sized batches, preferring a paragraph or sentence
+ * boundary near the limit so a batch does not start mid-clause. Clause analysis
+ * runs one Gemini call per batch, so the whole document is covered rather than
+ * only the opening 45,000 characters.
+ */
+export function splitIntoBatches(text: string, maxChars: number): string[] {
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+  if (trimmed.length <= maxChars) return [trimmed];
+
+  const batches: string[] = [];
+  let cursor = 0;
+
+  while (cursor < trimmed.length) {
+    let end = Math.min(cursor + maxChars, trimmed.length);
+
+    if (end < trimmed.length) {
+      const window = trimmed.slice(cursor, end);
+      const boundary = Math.max(
+        window.lastIndexOf("\n\n"),
+        window.lastIndexOf(". "),
+        window.lastIndexOf("? "),
+      );
+      // Only accept a boundary that keeps most of the batch, otherwise a long
+      // unbroken run of text would produce tiny batches.
+      if (boundary > maxChars / 2) end = cursor + boundary + 1;
+    }
+
+    const batch = trimmed.slice(cursor, end).trim();
+    if (batch) batches.push(batch);
+    cursor = end;
+  }
+
+  return batches;
+}
+
 export function chunkText(text: string, size = 500, overlap = 100): TextChunk[] {
   const words = text.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
   if (!words.length) return [];

@@ -1,10 +1,5 @@
 "use server";
 
-// LexClear — AI for Legal Assistance & Access (PromptWars 2026 submission)
-// Author: Sabarish R <sabarishr1087@gmail.com>
-// Portfolio: https://sabarishr08.vercel.app | LinkedIn: https://www.linkedin.com/in/sabarishr08 | GitHub: https://github.com/SabarishR08
-// Original work by the author. Please do not resubmit it as your own — see LICENSE.
-
 import mammoth from "mammoth";
 import pdf from "pdf-parse";
 import { revalidatePath } from "next/cache";
@@ -15,10 +10,50 @@ import { mapWithConcurrency } from "@/lib/concurrency";
 import { detectUploadKind } from "@/lib/files";
 import { takeToken } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
-import { uploadSchema } from "@/lib/validation";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { retrySchema, uploadSchema } from "@/lib/validation";
 
 /** Keeps a long contract from firing dozens of embedding requests at once. */
 const EMBED_CONCURRENCY = 3;
+
+type Client = SupabaseClient;
+
+const FAILURE_MESSAGE = "Analysis could not finish. Check your Gemini configuration and try again.";
+
+/**
+ * The one place a document is turned into analysis and vectors, shared by the
+ * upload flow and the retry flow.
+ */
+async function indexDocument(supabase: Client, documentId: string, rawText: string) {
+  const chunks = chunkText(rawText);
+  const [analysis, embeddings] = await Promise.all([
+    analyzeClauses(rawText),
+    mapWithConcurrency(chunks, EMBED_CONCURRENCY, (chunk) => embedText(chunk.content)),
+  ]);
+
+  await supabase.from("document_analysis").insert(
+    analysis.map((item) => ({
+      document_id: documentId,
+      clause_text: item.clauseText,
+      plain_text: item.plainText,
+      category: item.category,
+      risk_level: item.riskLevel,
+      reason: item.reason,
+      clause_ref: item.clauseRef,
+    })),
+  );
+
+  await supabase.from("document_chunks").insert(
+    chunks.map((chunk, index) => ({
+      document_id: documentId,
+      content: chunk.content,
+      chunk_index: chunk.index,
+      embedding: embeddings[index],
+    })),
+  );
+
+  await supabase.from("documents").update({ status: "ready" }).eq("id", documentId);
+}
 
 export async function uploadDocument(formData: FormData) {
   const file = formData.get("file");
@@ -69,41 +104,57 @@ export async function uploadDocument(formData: FormData) {
   if (error || !document) return { error: "Your document could not be saved." };
 
   try {
-    const chunks = chunkText(rawText);
-    const [analysis, embeddings] = await Promise.all([
-      analyzeClauses(rawText),
-      mapWithConcurrency(chunks, EMBED_CONCURRENCY, (chunk) => embedText(chunk.content)),
-    ]);
-
-    await supabase.from("document_analysis").insert(
-      analysis.map((item) => ({
-        document_id: document.id,
-        clause_text: item.clauseText,
-        plain_text: item.plainText,
-        category: item.category,
-        risk_level: item.riskLevel,
-        reason: item.reason,
-        clause_ref: item.clauseRef,
-      })),
-    );
-
-    await supabase.from("document_chunks").insert(
-      chunks.map((chunk, index) => ({
-        document_id: document.id,
-        content: chunk.content,
-        chunk_index: chunk.index,
-        embedding: embeddings[index],
-      })),
-    );
-
-    await supabase.from("documents").update({ status: "ready" }).eq("id", document.id);
+    await indexDocument(supabase, document.id, rawText);
   } catch {
     await supabase.from("documents").update({ status: "failed" }).eq("id", document.id);
-    return {
-      error: "Analysis could not finish. Check your Gemini configuration and try again.",
-    };
+    return { error: FAILURE_MESSAGE };
   }
 
   revalidatePath("/dashboard");
+  return { success: true as const };
+}
+
+/**
+ * Re-runs analysis for a document whose text is already stored, so a transient
+ * Gemini failure or a rate limit does not force the reader to upload again.
+ */
+export async function retryAnalysis(documentId: string) {
+  const parsed = retrySchema.safeParse({ documentId });
+  if (!parsed.success) return { error: "That document could not be found." };
+
+  const user = await getCurrentUser();
+  if (!user) return { error: "Please sign in first." };
+
+  if (!takeToken(`upload:${user.id}`, { capacity: 4, refillPerMinute: 4 })) {
+    return { error: "That is a lot of analysis runs in a row. Try again in a minute." };
+  }
+
+  const supabase = await createClient();
+  // Row-level security scopes this to the signed-in user's own documents.
+  const { data: document } = await supabase
+    .from("documents")
+    .select("id,raw_text")
+    .eq("id", documentId)
+    .maybeSingle();
+
+  const rawText = document?.raw_text;
+  if (typeof rawText !== "string" || !rawText.trim()) {
+    return { error: "That document has no stored text to analyse." };
+  }
+
+  // Clear anything the failed run left behind, so a retry cannot duplicate rows.
+  await supabase.from("document_analysis").delete().eq("document_id", documentId);
+  await supabase.from("document_chunks").delete().eq("document_id", documentId);
+  await supabase.from("documents").update({ status: "processing" }).eq("id", documentId);
+
+  try {
+    await indexDocument(supabase, documentId, rawText);
+  } catch {
+    await supabase.from("documents").update({ status: "failed" }).eq("id", documentId);
+    return { error: FAILURE_MESSAGE };
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/documents/${documentId}`);
   return { success: true as const };
 }

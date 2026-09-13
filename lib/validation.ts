@@ -22,6 +22,10 @@ export const chatSchema = z.object({
   question: z.string().trim().min(2).max(1000),
 });
 
+export const retrySchema = z.object({
+  documentId: z.string().uuid(),
+});
+
 export const compareSchema = z.object({
   documentA: z.string().uuid(),
   documentB: z.string().uuid(),

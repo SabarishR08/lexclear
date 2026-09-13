@@ -8,6 +8,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DocumentChat } from "@/components/document-chat";
 import { InlineDisclaimer } from "@/components/disclaimer";
+import { RetryAnalysis } from "@/components/retry-analysis";
 import { RiskBadge, riskColors } from "@/components/risk-badge";
 import { loadDocument } from "@/lib/documents";
 
@@ -52,11 +53,7 @@ export default async function DocumentPage({ params }: PageProps) {
           Analysis is still running. Refresh in a moment to see the clause guide.
         </p>
       ) : null}
-      {document.status === "failed" ? (
-        <p className="error" role="alert">
-          Analysis did not finish for this document. Upload it again to retry.
-        </p>
-      ) : null}
+      {document.status === "failed" ? <RetryAnalysis documentId={id} /> : null}
 
       <div className="reader">
         <section className="panel" aria-labelledby="clause-guide-heading">

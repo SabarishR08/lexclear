@@ -129,7 +129,7 @@ flowchart TD
   F --> G{"Longer than 300k characters?"}
   G -->|"yes"| H["Refused before anything is stored"]
   G -->|"no"| I["documents row inserted<br/>status is processing"]
-  I --> J["Gemini clause analysis<br/>structured JSON, zod validated"]
+  I --> J["Gemini clause analysis<br/>one structured call per batch"]
   I --> K["chunkText<br/>500 words with 100 words of overlap"]
   K --> L["Embed 3 chunks at a time<br/>retry on 429 and 503"]
   J --> M["document_analysis rows"]
@@ -137,11 +137,20 @@ flowchart TD
   M --> O["status becomes ready"]
   N --> O
   O --> P["Dashboard revalidated"]
+  H --> Q["Retry analysis<br/>reuses stored raw_text"]
+  Q --> I
 ```
 
 The parser is chosen from the **sniffed bytes**, not from the client's declared MIME type, so a
 renamed `.txt` cannot reach `pdf-parse`. If any Gemini step fails the row is marked `failed` and the
-extracted text is kept in `documents.raw_text`.
+extracted text is kept in `documents.raw_text`, which is what the retry path reuses: it clears any
+partial rows from the failed run and indexes the stored text again, so a transient rate limit never
+costs the reader another upload.
+
+Clause analysis is batched: the text is split on paragraph or sentence boundaries into 45,000
+character batches and analysed one call at a time, so the whole document reaches the clause guide
+instead of only its opening pages. Batches are sequential by design — the point of batching is to
+avoid a burst of requests, not to create one — so a very long document takes longer to analyse.
 
 ### Grounded document Q&A
 
@@ -321,20 +330,22 @@ npm test          # Vitest unit suites (47 tests)
 npm run test:e2e  # Playwright: accessibility, route protection, upload failure paths
 ```
 
-Unit coverage: chunking and the index-size guard, model-output validation, relevance selection,
-magic-byte detection, retry classification and backoff (including the server hint and the delay cap),
-the rate-limit bucket, bounded-concurrency mapping and the upload/chat/compare schemas.
+Unit coverage: chunking, batch splitting and the index-size guard, model-output validation and batch
+merging, relevance selection, magic-byte detection, retry classification and backoff (including the
+server hint and the delay cap), the rate-limit bucket, bounded-concurrency mapping, the middleware
+(including refresh and redirect cookie handling) and the upload/chat/compare schemas.
 
-The Playwright suite covers axe-core scans, the disclosure banner, the skip link, and route
-protection. Four further specs drive the signed-in upload flow — keyboard reaching the file input, a
-plain text file, a file that only claims to be a PDF, and an oversized file. They are skipped unless
-a signed-in session is provided, because a magic link cannot be completed from a headless test:
+The 16 Playwright specs need **no credentials**. Alongside axe-core scans, the disclosure banner, the
+skip link and route protection, they cover the signed-in upload flow — keyboard reaching the file
+input, a plain text file, a file that only claims to be a PDF, and an oversized file. Every "out"
+case the suite needs is supplied by a small fake Supabase endpoint (`e2e/support/fake-supabase.mjs`)
+that answers the token-refresh exchange and returns empty result sets, while
+`e2e/support/session.ts` mints the `sb-127-auth-token` cookie the SSR client expects.
 
-```bash
-E2E_SUPABASE_COOKIE_NAME=sb-<project-ref>-auth-token \
-E2E_SUPABASE_COOKIE_VALUE=<cookie value> \
-npm run test:e2e
-```
+The session-refresh specs are the interesting ones. They prove that an expired session is refreshed
+through the middleware on both public and private routes, that the newly issued session cookie comes
+back on the response (decoded and checked for a rotated refresh token and a future expiry), and that
+anonymous visitors are still redirected — the exact behaviour that a comment cannot establish.
 
 ### Continuous integration
 
@@ -383,14 +394,11 @@ middleware.ts         Supabase session refresh and private route guard
 
 ## Environment variables
 
-| Variable                        | Required | Purpose                                |
-| ------------------------------- | -------- | -------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | yes      | Supabase project URL                   |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes      | Public anon key, RLS enforced          |
-| `GEMINI_API_KEY`                | yes      | Every Gemini call                      |
-| `SUPABASE_SERVICE_ROLE_KEY`     | no       | Reserved; never sent to the client     |
-| `E2E_SUPABASE_COOKIE_NAME`      | no       | Enables the signed-in Playwright specs |
-| `E2E_SUPABASE_COOKIE_VALUE`     | no       | Enables the signed-in Playwright specs |
+| Variable                        | Required | Purpose                       |
+| ------------------------------- | -------- | ----------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | yes      | Supabase project URL          |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes      | Public anon key, RLS enforced |
+| `GEMINI_API_KEY`                | yes      | Every Gemini call             |     | `SUPABASE_SERVICE_ROLE_KEY` | no  | Reserved; never sent to the client |
 
 Without the Supabase variables the app still builds and runs, showing a "not configured" notice in
 place of the upload form instead of throwing a 500.
@@ -398,13 +406,12 @@ place of the upload form instead of throwing a 500.
 ## Known limitations
 
 - Comparison Mode needs two documents whose analysis has finished, so upload both before comparing.
-- A failed analysis leaves the extracted text in `documents.raw_text` but there is no retry button
-  yet; re-uploading re-embeds from scratch (no embedding cache).
+- Re-uploading the same document re-embeds it from scratch; there is no embedding cache keyed on a
+  content hash, so identical text is paid for twice.
 - Answers stream only after completion; responses are not token-streamed.
 - The lawyer-prep sheet is assembled from the stored analysis instead of a second Gemini call.
-- Clause analysis reads only the first 45,000 characters of a document. The brief calls for "one
-  structured-output call per clause batch", so a long document currently gets its later clauses
-  indexed for Q&A but not explained in the clause guide.
+- Clause analysis is capped at 8 batches (360,000 characters), above the 300,000 character upload
+  ceiling, so the cap is unreachable through the normal upload path.
 - The relevance floor of 0.5 is a considered default, not a tuned value; it has not been calibrated
   against a labelled set of real lease questions.
 

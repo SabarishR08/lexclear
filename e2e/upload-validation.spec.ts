@@ -1,29 +1,17 @@
-// LexClear — AI for Legal Assistance & Access (PromptWars 2026 submission)
-// Author: Sabarish R <sabarishr1087@gmail.com>
-// Portfolio: https://sabarishr08.vercel.app | LinkedIn: https://www.linkedin.com/in/sabarishr08 | GitHub: https://github.com/SabarishR08
-// Original work by the author. Please do not resubmit it as your own — see LICENSE.
-
 import { expect, test } from "@playwright/test";
+import { SESSION_COOKIE_NAME, sessionCookieValue } from "./support/session";
 
 /**
- * The signed-in upload flow needs a real Supabase session, which a magic-link
- * login cannot provide from a headless test. Export the cookie from a browser
- * that is already signed in to enable this spec:
- *
- *   E2E_SUPABASE_COOKIE_NAME=sb-<project-ref>-auth-token
- *   E2E_SUPABASE_COOKIE_VALUE=<cookie value>
+ * These run against the fake Supabase endpoint, so they need no credentials.
+ * The failure paths return from validation before any Gemini call is made.
  */
-const cookieName = process.env.E2E_SUPABASE_COOKIE_NAME;
-const cookieValue = process.env.E2E_SUPABASE_COOKIE_VALUE;
-const hasSession = Boolean(cookieName && cookieValue);
+test.beforeEach(async ({ context, baseURL }) => {
+  await context.addCookies([
+    { name: SESSION_COOKIE_NAME, value: sessionCookieValue(), url: baseURL! },
+  ]);
+});
 
 test.describe("upload validation", () => {
-  test.skip(!hasSession, "Needs a signed-in Supabase session cookie (see the comment above).");
-
-  test.beforeEach(async ({ context, baseURL }) => {
-    await context.addCookies([{ name: cookieName!, value: cookieValue!, url: baseURL! }]);
-  });
-
   test("the file input is reachable with the keyboard alone", async ({ page }) => {
     await page.goto("/dashboard");
 
