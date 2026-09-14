@@ -114,9 +114,11 @@ export function InteractiveLandingPreview() {
             <span className="doc-pill">{activeDemo.docType}</span>
             <span className="preview-doc-title">{activeDemo.docTitle}</span>
           </div>
-          <div className="preview-view-switch" role="tablist">
+          <div className="preview-view-switch" role="tablist" aria-label="Preview view modes">
             <button
               type="button"
+              role="tab"
+              aria-selected={tab === "clauses"}
               className={"view-switch-btn" + (tab === "clauses" ? " active" : "")}
               onClick={() => setTab("clauses")}
             >
@@ -124,6 +126,8 @@ export function InteractiveLandingPreview() {
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={tab === "chat"}
               className={"view-switch-btn" + (tab === "chat" ? " active" : "")}
               onClick={() => setTab("chat")}
             >

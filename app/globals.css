@@ -1318,7 +1318,7 @@ textarea {
 
 .preview-clause-tag {
   font-size: 0.8rem;
-  color: #6a7b75;
+  color: #3b5049;
   font-weight: 600;
 }
 
@@ -1540,7 +1540,7 @@ textarea {
 
 .disclaimer-text {
   font-size: 0.78rem;
-  color: #83948e;
+  color: #52635e;
 }
 
 @media (max-width: 860px) {
