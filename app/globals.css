@@ -5,17 +5,17 @@
  * Original work by the author. Please do not resubmit it as your own — see LICENSE.
  */
 
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap");
 
 :root {
-  --ink: #17211f;
-  --heading: #123e36;
-  --brand: #126b5a;
-  /* Darkened from #d97b45: the wordmark is large text and needs 3:1, and this
-     clears AA for normal text too (5.1:1 on the paper background). */
-  --accent: #a85220;
-  --paper: #faf8f4;
-  --line: #e6e0d7;
+  --ink: #0f172a;
+  --heading: #0f172a;
+  --brand: #4338ca;
+  --accent: #3730a3;
+  --paper: #ffffff;
+  --line: #e2e8f0;
+  --hero-bg: #0f172a;
+  --hero-surface: #1e293b;
 }
 
 * {
@@ -106,14 +106,15 @@ select {
 }
 
 .brand {
-  font-family: "Playfair Display", serif;
+  font-family: "Inter", system-ui, sans-serif;
   font-size: 1.65rem;
-  color: #11433a;
-  font-weight: 700;
+  color: var(--heading);
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
 
 .brand span {
-  color: var(--accent);
+  color: var(--brand);
 }
 
 .btn {
@@ -134,7 +135,7 @@ select {
 .btn.secondary {
   background: #fff;
   color: var(--brand);
-  border: 1px solid var(--brand);
+  border: 1px solid var(--line);
 }
 
 .hero {
@@ -145,23 +146,30 @@ select {
   align-items: center;
 }
 
+h1,
+h2,
+h3,
+h4 {
+  font-family: "Inter", system-ui, sans-serif;
+  color: var(--heading);
+  letter-spacing: -0.02em;
+}
+
 h1 {
-  font-family: "Playfair Display", serif;
-  font-size: clamp(2.6rem, 6vw, 4.7rem);
+  font-size: clamp(2.6rem, 6vw, 4.2rem);
+  font-weight: 800;
   line-height: 1.05;
   margin: 0 0 22px;
-  color: var(--heading);
 }
 
 h2 {
-  font-family: "Playfair Display", serif;
   font-size: 1.7rem;
-  color: var(--heading);
+  font-weight: 700;
 }
 
 .lead {
   font-size: 1.15rem;
-  color: #4b5d58;
+  color: #475569;
   line-height: 1.65;
   max-width: 620px;
 }

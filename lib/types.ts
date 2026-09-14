@@ -12,6 +12,7 @@ export type ClauseAnalysis = {
   riskLevel: RiskLevel;
   reason: string;
   clauseRef: string;
+  sourceQuote?: string;
 };
 
 export type MaterialTermComparison = {

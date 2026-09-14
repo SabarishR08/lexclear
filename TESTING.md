@@ -33,15 +33,18 @@ npm run build
 
 ## 2. Tested Layers & Coverage
 
-| Layer                  | Focus Area                                                          | Verification Files                                                  |
-| :--------------------- | :------------------------------------------------------------------ | :------------------------------------------------------------------ |
-| **Input Validation**   | Byte-level PDF/DOCX magic numbers, file size limits, rate limiting  | lib/files.test.ts, lib/validation.test.ts, lib/rate-limit.test.ts   |
-| **AI Integration**     | Gemini response parsing, structured schema adherence, retry backoff | lib/ai/parsing.test.ts, lib/ai/retry.test.ts, lib/ai/gemini.test.ts |
-| **Document Chunking**  | Text splitting, boundary preservation, character bounds             | lib/chunking.test.ts, lib/fixtures.test.ts                          |
-| **Vector Retrieval**   | Semantic cosine similarity thresholding, relevance filtering        | lib/retrieval.test.ts                                               |
-| **Contract Reasoning** | Fairness score calculation, date/term inconsistency detection       | lib/scorecard.test.ts                                               |
-| **Concurrency**        | Bounded promise concurrency pool execution                          | lib/concurrency.test.ts                                             |
-| **Routing & Auth**     | Public evaluation access and cookie session preservation            | middleware.test.ts                                                  |
+| Layer                     | Focus Area                                                           | Verification Files                                                                           |
+| :------------------------ | :------------------------------------------------------------------- | :------------------------------------------------------------------------------------------- |
+| **Input Validation**      | Byte-level PDF/DOCX magic numbers, file size limits, rate limiting   | `lib/files.test.ts`, `lib/validation.test.ts`, `lib/rate-limit.test.ts`                      |
+| **AI Integration**        | Gemini response parsing, structured schema adherence, retry backoff  | `lib/ai/parsing.test.ts`, `lib/ai/retry.test.ts`, `lib/ai/gemini.test.ts`                    |
+| **Model Fallback Chain**  | Automatic cascade across 3 Gemini models on rate-limit/errors        | `lib/ai/model-chain.test.ts`                                                                 |
+| **Evidence Verification** | Substring verification against raw source text to stop hallucination | `lib/ai/evidence.test.ts`                                                                    |
+| **Document Chunking**     | Text splitting, boundary preservation, character bounds              | `lib/chunking.test.ts`, `lib/fixtures.test.ts`                                               |
+| **Vector Retrieval**      | Semantic cosine similarity thresholding, relevance filtering         | `lib/retrieval.test.ts`                                                                      |
+| **Contract Reasoning**    | Fairness score calculation, date/term inconsistency detection        | `lib/scorecard.test.ts`                                                                      |
+| **Concurrency**           | Bounded promise concurrency pool execution                           | `lib/concurrency.test.ts`                                                                    |
+| **Routing & Auth**        | Public evaluation access and cookie session preservation             | `middleware.test.ts`                                                                         |
+| **End-to-End & A11y**     | Playwright browser automation + automated Axe WCAG A/AA audits       | `e2e/accessibility.spec.ts`, `e2e/route-protection.spec.ts`, `e2e/upload-validation.spec.ts` |
 
 ---
 

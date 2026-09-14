@@ -17,6 +17,7 @@ export const riskItemSchema = z.object({
   riskLevel: z.enum(["favorable", "neutral", "risky", "needs-attention"]),
   reason: z.string(),
   clauseRef: z.string(),
+  sourceQuote: z.string().optional().default(""),
 });
 
 export const materialTermSchema = z.object({

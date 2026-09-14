@@ -135,6 +135,10 @@ export default function Home() {
             Upload your PDF or paste contract clauses to get your clause guide, risk summary, and
             negotiation checklist in seconds.
           </p>
+          <p className="cta-stat-strip">
+            Grounded in pgvector RAG · Zero data retention · All 7 problem statement use cases
+            covered
+          </p>
           <div className="cta-btn-wrapper">
             <Link className="btn primary-cta large" href="/dashboard">
               Start Free Analysis <ArrowRight size={18} />

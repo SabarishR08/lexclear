@@ -22,8 +22,13 @@ LexClear processes sensitive legal instruments (leases, freelance agreements, of
 
 ### **A. Byte-Level File Sniffing & Input Validation**
 
-- Uploads are checked against strict MIME magic-bytes (detectUploadKind) rather than trusting user-provided file extension or headers.
+- Uploads are checked against strict MIME magic-bytes (`detectUploadKind`) rather than trusting user-provided file extension or headers.
 - Input size strictly limited to 10MB; character lengths bounded before chunking to prevent embedding-runaway.
+
+### **B. Substring Evidence Verification (Zero-Hallucination Guard)**
+
+- Every clause extracted by the model is checked verbatim via `isVerifiedQuote` against the user's raw source document.
+- Inventions or hallucinated paragraphs are rejected before they reach the user interface.
 
 ### **B. Zero Retention & Privacy-First Architecture**
 
