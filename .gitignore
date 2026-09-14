@@ -17,3 +17,5 @@ test-results
 .freebuff
 supabase/.temp
 .neon
+.agents
+docs-internal
