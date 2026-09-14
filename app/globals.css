@@ -1548,3 +1548,187 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================================
+   Free Legal Aid Self-Check Component Styles (Section 12 NALSA)
+   ========================================================================== */
+
+.legal-aid-container {
+  background: #ffffff;
+  border: 1px solid #d4ded8;
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(18, 107, 90, 0.05);
+}
+
+.legal-aid-header {
+  margin-bottom: 20px;
+}
+
+.aid-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.aid-icon {
+  color: var(--brand);
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.aid-title-row h3 {
+  margin: 0 0 6px;
+  font-size: 1.25rem;
+  color: #123e36;
+}
+
+.aid-assessment-box {
+  margin-bottom: 20px;
+}
+
+.aid-result.check-prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f1f7f4;
+  border: 1px solid #c9dfd5;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 0.92rem;
+  color: #1c4b40;
+}
+
+.aid-result.eligible {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #e6f7ef;
+  border: 1px solid #94dfba;
+  border-radius: 10px;
+  padding: 16px;
+  color: #0d5437;
+}
+
+.aid-result.eligible .result-icon {
+  color: #0d8251;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.aid-result.eligible strong {
+  font-size: 1.05rem;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.aid-result.eligible p {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.aid-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #0d8251;
+  color: #ffffff;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  transition: background 0.15s ease;
+}
+
+.aid-link-btn:hover {
+  background: #09633e;
+}
+
+.aid-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.aid-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #fafcfb;
+  border: 1px solid #e0ebe5;
+  border-radius: 10px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.aid-card:hover {
+  border-color: var(--brand);
+  background: #ffffff;
+}
+
+.aid-card.active {
+  background: #f0faf5;
+  border-color: var(--brand);
+  box-shadow: 0 2px 8px rgba(18, 107, 90, 0.12);
+}
+
+.aid-checkbox {
+  margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+
+.aid-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.aid-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.aid-clause-tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #126b5a;
+  background: #e2ede8;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.aid-card-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #1a2a26;
+}
+
+.aid-card-desc {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #556661;
+  line-height: 1.4;
+}
+
+.aid-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid #e4eee9;
+  font-size: 0.8rem;
+  color: #647570;
+}
+
+.aid-footer svg {
+  flex-shrink: 0;
+  color: var(--brand);
+}

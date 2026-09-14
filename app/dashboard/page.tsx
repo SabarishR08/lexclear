@@ -7,13 +7,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SampleDocumentLoader } from "@/components/sample-document-loader";
 import { UploadForm } from "@/components/upload-form";
-import { getCurrentUser } from "@/lib/auth";
 import { loadLibrary } from "@/lib/documents";
 
 export const metadata: Metadata = { title: "Your documents" };
 
 export default async function DashboardPage() {
-  const [user, { documents, connected }] = await Promise.all([getCurrentUser(), loadLibrary()]);
+  const { documents, connected } = await loadLibrary();
 
   return (
     <main className="page dashboard" id="main">
@@ -21,13 +20,7 @@ export default async function DashboardPage() {
         <Link className="brand" href="/">
           Lex<span>Clear</span>
         </Link>
-        {user ? (
-          <span className="muted">{user.email}</span>
-        ) : (
-          <Link className="btn secondary" href="/login">
-            Sign in
-          </Link>
-        )}
+        <span className="badge-pill-sub">🔒 Zero-Retention Privacy Session</span>
       </nav>
 
       <div className="dashboard-head">

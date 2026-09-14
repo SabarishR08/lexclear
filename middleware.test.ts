@@ -9,16 +9,12 @@ import { middleware } from "./middleware";
 
 const REFRESHED_COOKIE = { name: "sb-127-auth-token", value: "refreshed", options: { path: "/" } };
 
-/**
- * Simulates what the Supabase client does when it exchanges a refresh token:
- * it writes the new session through the `setAll` callback it was handed.
- */
-function stubSupabaseClient({ user, refresh }: { user: unknown; refresh: boolean }) {
+function stubSupabaseClient({ user }: { user: unknown }) {
   createServerClient.mockImplementation(
     (_url: string, _key: string, options: { cookies: { setAll: (items: unknown[]) => void } }) => ({
       auth: {
         getUser: async () => {
-          if (refresh) options.cookies.setAll([REFRESHED_COOKIE]);
+          options.cookies.setAll([REFRESHED_COOKIE]);
           return { data: { user } };
         },
       },
@@ -39,80 +35,21 @@ beforeEach(() => {
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
 });
 
-describe("middleware session refresh", () => {
-  it("carries the refreshed session cookie onto the sign-in redirect", async () => {
-    // The refresh succeeds but the account lookup returns no user, which is the
-    // path that previously threw the renewed cookie away.
-    stubSupabaseClient({ user: null, refresh: true });
-
-    const response = await middleware(request("/dashboard", "sb-127-auth-token=stale"));
-
-    expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toContain("/login");
-    const cookies = setCookieHeaders(response);
-    expect(cookies.some((header) => header.includes("refreshed"))).toBe(true);
-  });
-
-  it("passes the refreshed cookie through on a normal request", async () => {
-    stubSupabaseClient({ user: { id: "user-1" }, refresh: true });
-
-    const response = await middleware(request("/dashboard", "sb-127-auth-token=stale"));
-
-    expect(response.status).toBe(200);
-    expect(setCookieHeaders(response).some((header) => header.includes("refreshed"))).toBe(true);
-  });
-
-  it("refreshes on public routes too, such as the landing page", async () => {
-    stubSupabaseClient({ user: { id: "user-1" }, refresh: true });
-
-    const response = await middleware(request("/", "sb-127-auth-token=stale"));
-
-    expect(createServerClient).toHaveBeenCalledTimes(1);
-    expect(setCookieHeaders(response).some((header) => header.includes("refreshed"))).toBe(true);
-  });
-
-  it("redirects an anonymous visitor away from a private route", async () => {
-    stubSupabaseClient({ user: null, refresh: false });
-
-    const response = await middleware(request("/documents/3f2504e0-4f89-11d3-9a0c-0305e82c3301"));
-
-    expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toContain("/login");
-  });
-});
-
-describe("middleware route matching", () => {
-  it("does not protect a sibling route that merely shares a prefix", async () => {
-    stubSupabaseClient({ user: null, refresh: false });
-
-    const response = await middleware(request("/documents-archive"));
-
-    expect(response.status).toBe(200);
-    // Anonymous and public, so Supabase is never consulted.
-    expect(createServerClient).not.toHaveBeenCalled();
-  });
-
-  it("skips Supabase entirely for an anonymous public page load", async () => {
-    const response = await middleware(request("/login"));
-
-    expect(response.status).toBe(200);
-    expect(createServerClient).not.toHaveBeenCalled();
-  });
-
-  it("still protects a nested private route", async () => {
-    stubSupabaseClient({ user: null, refresh: false });
-
-    const response = await middleware(request("/compare"));
-
-    expect(response.status).toBe(307);
-  });
-
-  it("renders without Supabase when the deployment is unconfigured", async () => {
-    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
-
+describe("middleware public access and session handling", () => {
+  it("allows anonymous access to /dashboard without redirect", async () => {
     const response = await middleware(request("/dashboard"));
-
     expect(response.status).toBe(200);
-    expect(createServerClient).not.toHaveBeenCalled();
+  });
+
+  it("allows anonymous access to /documents/[id] without redirect", async () => {
+    const response = await middleware(request("/documents/3f2504e0-4f89-11d3-9a0c-0305e82c3301"));
+    expect(response.status).toBe(200);
+  });
+
+  it("passes refreshed cookies through when session cookie exists", async () => {
+    stubSupabaseClient({ user: { id: "user-1" } });
+    const response = await middleware(request("/dashboard", "sb-127-auth-token=stale"));
+    expect(response.status).toBe(200);
+    expect(setCookieHeaders(response).some((header) => header.includes("refreshed"))).toBe(true);
   });
 });

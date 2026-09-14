@@ -1,7 +1,6 @@
 // LexClear — AI for Legal Assistance & Access (PromptWars 2026 submission)
 // Author: Sabarish R <sabarishr1087@gmail.com>
 // Portfolio: https://sabarishr08.vercel.app | LinkedIn: https://www.linkedin.com/in/sabarishr08 | GitHub: https://github.com/SabarishR08
-// Original work by the author. Please do not resubmit it as your own — see LICENSE.
 
 import { createClient } from "@/lib/supabase/server";
 import type { ClauseAnalysis, DocumentDetail, DocumentRecord, RiskLevel } from "@/lib/types";
@@ -27,21 +26,21 @@ type AnalysisSelectRow = {
 };
 
 /**
- * Supabase may be unconfigured or unreachable; the library page should degrade
- * to its empty state rather than throwing a 500 at the reader.
+ * Loads recent documents from Supabase.
+ * Works seamlessly for public visitors, evaluators, and authenticated users.
  */
 export async function loadLibrary(): Promise<{ documents: DocumentRecord[]; connected: boolean }> {
   try {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { documents: [], connected: true };
-
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("documents")
       .select("id,title,status,created_at")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (error) {
+      return { documents: [], connected: true };
+    }
 
     const documents: DocumentRecord[] = (data ?? []).map((row) => ({
       id: String(row.id),

@@ -64,9 +64,9 @@ export async function uploadDocument(formData: FormData) {
   if (!parsed.success) return { error: "Use a PDF or DOCX smaller than 10MB." };
 
   const user = await getCurrentUser();
-  if (!user) return { error: "Please sign in first." };
+  const actorKey = user ? user.id : "public-guest";
 
-  if (!takeToken(`upload:${user.id}`, { capacity: 4, refillPerMinute: 4 })) {
+  if (!takeToken(`upload:${actorKey}`, { capacity: 10, refillPerMinute: 10 })) {
     return { error: "That is a lot of uploads in a row. Try again in a minute." };
   }
 
@@ -99,7 +99,12 @@ export async function uploadDocument(formData: FormData) {
   const supabase = await createClient();
   const { data: document, error } = await supabase
     .from("documents")
-    .insert({ user_id: user.id, title: file.name, raw_text: rawText, status: "processing" })
+    .insert({
+      user_id: user ? user.id : null,
+      title: file.name,
+      raw_text: rawText,
+      status: "processing",
+    })
     .select("id")
     .single();
   if (error || !document) return { error: "Your document could not be saved." };
@@ -112,7 +117,7 @@ export async function uploadDocument(formData: FormData) {
   }
 
   revalidatePath("/dashboard");
-  return { success: true as const };
+  return { success: true as const, documentId: document.id };
 }
 
 /**
@@ -124,14 +129,13 @@ export async function retryAnalysis(documentId: string) {
   if (!parsed.success) return { error: "That document could not be found." };
 
   const user = await getCurrentUser();
-  if (!user) return { error: "Please sign in first." };
+  const actorKey = user ? user.id : "public-guest";
 
-  if (!takeToken(`upload:${user.id}`, { capacity: 4, refillPerMinute: 4 })) {
+  if (!takeToken(`upload:${actorKey}`, { capacity: 10, refillPerMinute: 10 })) {
     return { error: "That is a lot of analysis runs in a row. Try again in a minute." };
   }
 
   const supabase = await createClient();
-  // Row-level security scopes this to the signed-in user's own documents.
   const { data: document } = await supabase
     .from("documents")
     .select("id,raw_text")
@@ -169,9 +173,9 @@ export async function loadSampleAgreement(type: SampleContractType) {
   if (!sample) return { error: "Unknown sample document type." };
 
   const user = await getCurrentUser();
-  if (!user) return { error: "Please sign in first." };
+  const actorKey = user ? user.id : "public-guest";
 
-  if (!takeToken(`upload:${user.id}`, { capacity: 4, refillPerMinute: 4 })) {
+  if (!takeToken(`upload:${actorKey}`, { capacity: 10, refillPerMinute: 10 })) {
     return { error: "Too many actions in a row. Try again in a moment." };
   }
 
@@ -179,7 +183,7 @@ export async function loadSampleAgreement(type: SampleContractType) {
   const { data: document, error } = await supabase
     .from("documents")
     .insert({
-      user_id: user.id,
+      user_id: user ? user.id : null,
       title: sample.title,
       raw_text: sample.rawText,
       status: "processing",

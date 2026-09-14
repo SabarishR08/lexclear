@@ -63,11 +63,8 @@ export default function Home() {
           Lex<span>Clear</span>
         </Link>
         <div className="nav-actions">
-          <Link className="btn secondary" href="/login">
-            Sign in
-          </Link>
           <Link className="btn primary-cta" href="/dashboard">
-            Open App <ArrowRight size={16} />
+            Launch Assistant <ArrowRight size={16} />
           </Link>
         </div>
       </nav>

@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DeadlineTracker } from "@/components/deadline-tracker";
 import { FairnessScorecard } from "@/components/fairness-scorecard";
 import { InconsistencyChecker } from "@/components/inconsistency-checker";
+import { LegalAidChecklist } from "@/components/legal-aid-checklist";
 import { RiskBadge, riskColors } from "@/components/risk-badge";
 import { getCounterProposal } from "@/lib/counter-proposals";
 import type { AnalysisRow } from "@/lib/documents";
@@ -21,7 +22,8 @@ interface ClauseExplorerProps {
   clauses: AnalysisRow[];
 }
 
-type ExplorerTab = "guide" | "scorecard" | "inconsistencies" | "deadlines" | "checklist";
+type ExplorerTab =
+  "guide" | "scorecard" | "inconsistencies" | "deadlines" | "checklist" | "legal-aid";
 
 export function ClauseExplorer({ documentId, documentTitle, clauses }: ClauseExplorerProps) {
   const [selectedRisk, setSelectedRisk] = useState<RiskLevel | "all">("all");
@@ -283,7 +285,16 @@ export function ClauseExplorer({ documentId, documentTitle, clauses }: ClauseExp
           className={`view-tab ${activeTab === "checklist" ? "active" : ""}`}
           onClick={() => setActiveTab("checklist")}
         >
-          ☑️ Action Checklist ({resolvedCount}/{flaggedClauses.length})
+          📋 Negotiation Checklist ({flaggedClauses.length})
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "legal-aid"}
+          className={`view-tab ${activeTab === "legal-aid" ? "active" : ""}`}
+          onClick={() => setActiveTab("legal-aid")}
+        >
+          ⚖️ Free Legal Aid Check
         </button>
       </div>
 
@@ -494,6 +505,12 @@ export function ClauseExplorer({ documentId, documentTitle, clauses }: ClauseExp
               <p>🎉 No high-risk or attention-needed clauses were flagged in this document!</p>
             </div>
           )}
+        </div>
+      ) : null}
+
+      {activeTab === "legal-aid" ? (
+        <div className="tab-pane" role="tabpanel" aria-labelledby="tab-legal-aid">
+          <LegalAidChecklist />
         </div>
       ) : null}
     </section>

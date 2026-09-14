@@ -20,9 +20,9 @@ export async function askDocument(documentId: string, question: string) {
   if (!input.success) return { error: "Please enter a valid question." };
 
   const user = await getCurrentUser();
-  if (!user) return { error: "Please sign in first." };
+  const actorKey = user ? user.id : "public-guest";
 
-  if (!takeToken(`ask:${user.id}`, { capacity: 10, refillPerMinute: 10 })) {
+  if (!takeToken(`ask:${actorKey}`, { capacity: 15, refillPerMinute: 15 })) {
     return { error: "That is a lot of questions at once. Try again in a minute." };
   }
 
@@ -37,7 +37,6 @@ export async function askDocument(documentId: string, question: string) {
     });
     if (error) return { error: "This document's search index is unavailable right now." };
 
-    // Row-level security already limits these rows to the signed-in user's document.
     const relevant = selectRelevantChunks((data ?? []) as RetrievedChunk[]);
     if (!relevant.length) return { error: "I can't find that in this document." };
 
@@ -47,8 +46,18 @@ export async function askDocument(documentId: string, question: string) {
     const answer = await groundedAnswer(input.data.question, context);
 
     await supabase.from("chat_messages").insert([
-      { document_id: input.data.documentId, user_id: user.id, role: "user", content: question },
-      { document_id: input.data.documentId, user_id: user.id, role: "assistant", content: answer },
+      {
+        document_id: input.data.documentId,
+        user_id: user?.id ?? null,
+        role: "user",
+        content: question,
+      },
+      {
+        document_id: input.data.documentId,
+        user_id: user?.id ?? null,
+        role: "assistant",
+        content: answer,
+      },
     ]);
 
     return { answer };

@@ -6,6 +6,7 @@
 // Original work by the author. Please do not resubmit it as your own — see LICENSE.
 
 import { useId, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { uploadDocument } from "@/app/dashboard/actions";
 import { DISCLAIMER } from "@/lib/disclaimer";
 
@@ -22,6 +23,7 @@ function validateFile(file: File): string | null {
 }
 
 export function UploadForm() {
+  const router = useRouter();
   const inputId = useId();
   const statusId = useId();
   const [fileName, setFileName] = useState<string | null>(null);
@@ -54,6 +56,9 @@ export function UploadForm() {
       setMessage({ kind: "ok", text: "Your document is ready to review." });
       setFileName(null);
       form.reset();
+      if ("documentId" in result && result.documentId) {
+        router.push(`/documents/${result.documentId}`);
+      }
     });
   }
 
