@@ -30,12 +30,12 @@ refuses to answer when the document does not contain the answer.
 
 - [Every AI capability and where it plugs in](#every-ai-capability-and-where-it-plugs-in)
 - [Architecture](#architecture)
-  - [System overview](#system-overview)
-  - [Upload and analysis pipeline](#upload-and-analysis-pipeline)
-  - [Grounded document Q&A](#grounded-document-qa)
-  - [Comparison and lawyer-prep export](#comparison-and-lawyer-prep-export)
-  - [Authentication and session handling](#authentication-and-session-handling)
-  - [Data model](#data-model)
+ - [System overview](#system-overview)
+ - [Upload and analysis pipeline](#upload-and-analysis-pipeline)
+ - [Grounded document Q&A](#grounded-document-qa)
+ - [Comparison and lawyer-prep export](#comparison-and-lawyer-prep-export)
+ - [Authentication and session handling](#authentication-and-session-handling)
+ - [Data model](#data-model)
 - [Resilience and cost control](#resilience-and-cost-control)
 - [Security and privacy](#security-and-privacy)
 - [Accessibility](#accessibility)
@@ -56,13 +56,13 @@ Every AI capability runs on Google Gemini. There is deliberately no fallback pro
 from a different model live in a different vector space, so swapping one in mid-flight would make
 retrieval compare a query vector against incompatible stored vectors and return confident nonsense.
 
-| Service                                             | Integration point                                                                                                                                                                                                                                                                         |
+| Service | Integration point |
 | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gemini `gemini-2.5-flash`, structured JSON output   | **Document Simplification Engine** — rewrites each clause in grade-8 English, tagged by category (Payment, Termination, Liability, Confidentiality, Dispute Resolution…).                                                                                                                 |
-| Gemini `gemini-2.5-flash`, `responseSchema` enum    | **Risk & Obligation Highlighter** — classifies each clause `favorable`, `neutral`, `risky` or `needs-attention`, each with a written reason. The label is always rendered as text, never colour alone.                                                                                    |
+| Gemini `gemini-2.5-flash`, structured JSON output | **Document Simplification Engine** — rewrites each clause in grade-8 English, tagged by category (Payment, Termination, Liability, Confidentiality, Dispute Resolution…). |
+| Gemini `gemini-2.5-flash`, `responseSchema` enum | **Risk & Obligation Highlighter** — classifies each clause `favorable`, `neutral`, `risky` or `needs-attention`, each with a written reason. The label is always rendered as text, never colour alone. |
 | Gemini `gemini-embedding-001` + Supabase `pgvector` | **Grounded Document Q&A (RAG)** — the document is chunked, embedded into 768-dimension vectors, and the top matches above a relevance floor are retrieved. Answers cite the clauses they came from and the model must say "I can't find that in this document" when the answer is absent. |
-| Gemini `gemini-2.5-flash`, structured JSON output   | **Contract Comparison Mode** — pick two analysed documents and Gemini returns a material-terms table: payment/rent, deposit, notice period, penalties, term length and liability, with the practical difference for each.                                                                 |
-| Gemini analysis output, rendered deterministically  | **Next-Steps & Lawyer-Prep Generator** — the downloadable Markdown sheet gathers the `risky` and `needs-attention` clauses plus questions to bring to counsel. It is assembled from the stored analysis rather than a second model call.                                                  |
+| Gemini `gemini-2.5-flash`, structured JSON output | **Contract Comparison Mode** — pick two analysed documents and Gemini returns a material-terms table: payment/rent, deposit, notice period, penalties, term length and liability, with the practical difference for each. |
+| Gemini analysis output, rendered deterministically | **Next-Steps & Lawyer-Prep Generator** — the downloadable Markdown sheet gathers the `risky` and `needs-attention` clauses plus questions to bring to counsel. It is assembled from the stored analysis rather than a second model call. |
 
 **A note on the embedding model.** The brief names `text-embedding-004`. That model has been retired:
 `embedContent` now returns `404 NOT_FOUND` for it, so every upload would have failed at the embedding
@@ -75,11 +75,11 @@ both the model name and the width.
 Two deliberate constraints apply to every prompt:
 
 1. **Untrusted input is fenced.** Document text is wrapped in `<document>` tags and the prompts state
-   that fenced content is data to analyse, never instructions. An uploaded contract is untrusted
-   input and can contain text such as "ignore previous instructions".
+ that fenced content is data to analyse, never instructions. An uploaded contract is untrusted
+ input and can contain text such as "ignore previous instructions".
 2. **Model output is validated, not cast.** Every structured response is parsed through a zod schema
-   before it reaches the database or the UI, so a malformed or off-schema completion fails loudly
-   instead of writing garbage into a clause row.
+ before it reaches the database or the UI, so a malformed or off-schema completion fails loudly
+ instead of writing garbage into a clause row.
 
 ## Architecture
 
@@ -291,45 +291,45 @@ definition lives in [`supabase/schema.sql`](supabase/schema.sql).
 ## Resilience and cost control
 
 - Embedding requests run **3 at a time** instead of one per chunk in parallel, so a long contract
-  cannot trip its own rate limit.
+ cannot trip its own rate limit.
 - Every Gemini call retries on `429`, `500`, `502`, `503` and `504`, honouring the server's own
-  `retryDelay` hint where it is present and otherwise backing off exponentially (800ms base, doubled
-  per attempt, capped at 15s) with equal jitter so parallel workers do not retry in lockstep. A
-  permanent failure such as `400` or `401` is never retried, and neither is a malformed response,
-  because repeating those only burns quota.
+ `retryDelay` hint where it is present and otherwise backing off exponentially (800ms base, doubled
+ per attempt, capped at 15s) with equal jitter so parallel workers do not retry in lockstep. A
+ permanent failure such as `400` or `401` is never retried, and neither is a malformed response,
+ because repeating those only burns quota.
 - Both Gemini-calling Server Actions are also rate-limited per user by an in-memory token bucket.
 - A document longer than 300,000 characters is refused before anything is stored, rather than
-  silently analysed in part or fanned out into hundreds of embedding requests.
+ silently analysed in part or fanned out into hundreds of embedding requests.
 - Comparison and the lawyer-prep sheet reuse stored analysis, so neither re-reads or re-embeds a
-  document.
+ document.
 
 ## Security and privacy
 
 - Row-level security on every table, scoped to `auth.uid()`; the service-role key never reaches the
-  browser and in fact is not used anywhere in the codebase.
+ browser and in fact is not used anywhere in the codebase.
 - `middleware.ts` refreshes the Supabase session and redirects anonymous visitors away from
-  `/dashboard`, `/documents/*` and `/compare`.
+ `/dashboard`, `/documents/*` and `/compare`.
 - Uploads are validated twice: zod checks the declared type and the 10MB cap, then the raw bytes are
-  sniffed for a real PDF header or an OOXML zip package, so a renamed file cannot reach a parser.
+ sniffed for a real PDF header or an OOXML zip package, so a renamed file cannot reach a parser.
 - Document text is fenced as untrusted data in every prompt, which hardens against prompt injection
-  carried inside an uploaded contract.
+ carried inside an uploaded contract.
 - Security headers (`nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`) are set in
-  `next.config.ts`.
+ `next.config.ts`.
 - Document text is disclosed as being sent to Gemini before upload, and `.env` is gitignored. Only
-  `.env.example` is committed.
+ `.env.example` is committed.
 
 ## Accessibility
 
 - `axe-core` runs inside the Playwright suite in CI against the landing and login pages. It caught a
-  real AA violation during development: the wordmark accent was 2.88:1 against the page background,
-  below the 3:1 floor for large text, and was darkened until it cleared AA for normal text as well.
+ real AA violation during development: the wordmark accent was 2.88:1 against the page background,
+ below the 3:1 floor for large text, and was darkened until it cleared AA for normal text as well.
 - The file input is visually hidden rather than `display: none`, so it stays in the tab order — the
-  primary action of the app was previously unreachable by keyboard.
+ primary action of the app was previously unreachable by keyboard.
 - A skip link jumps straight to main content, and focus is always visible via `:focus-visible`.
 - Risk states are written out as text as well as colour, and async results announce themselves
-  through `role="status"` / `aria-live`.
+ through `role="status"` / `aria-live`.
 - Every form control has a programmatic label, and the comparison table uses real table semantics
-  with `caption` and `scope`.
+ with `caption` and `scope`.
 
 ## Testing
 
@@ -396,17 +396,17 @@ middleware.ts         Supabase session refresh and private route guard
 
 1. Copy `.env.example` to `.env.local` and set the credentials below.
 2. Create a Supabase project, enable the `vector` extension, and run
-   [`supabase/schema.sql`](supabase/schema.sql).
+ [`supabase/schema.sql`](supabase/schema.sql).
 3. Enable email magic-link auth (and Google OAuth if you want it) in Supabase.
 4. Run `npm install`, then `npm run dev`.
 
 ## Environment variables
 
-| Variable                        | Required | Purpose                       |
+| Variable | Required | Purpose |
 | ------------------------------- | -------- | ----------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | yes      | Supabase project URL          |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes      | Public anon key, RLS enforced |
-| `GEMINI_API_KEY`                | yes      | Every Gemini call             |     | `SUPABASE_SERVICE_ROLE_KEY` | no  | Reserved; never sent to the client |
+| `NEXT_PUBLIC_SUPABASE_URL` | yes | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes | Public anon key, RLS enforced |
+| `GEMINI_API_KEY` | yes | Every Gemini call | | `SUPABASE_SERVICE_ROLE_KEY` | no | Reserved; never sent to the client |
 
 Without the Supabase variables the app still builds and runs, showing a "not configured" notice in
 place of the upload form instead of throwing a 500.
@@ -415,15 +415,15 @@ place of the upload form instead of throwing a 500.
 
 - Comparison Mode needs two documents whose analysis has finished, so upload both before comparing.
 - Re-uploading the same document re-embeds it from scratch; there is no embedding cache keyed on a
-  content hash, so identical text is paid for twice.
+ content hash, so identical text is paid for twice.
 - Answers stream only after completion; responses are not token-streamed.
 - The lawyer-prep sheet is assembled from the stored analysis instead of a second Gemini call.
 - Clause analysis is capped at 8 batches (360,000 characters), above the 300,000 character upload
-  ceiling, so the cap is unreachable through the normal upload path.
+ ceiling, so the cap is unreachable through the normal upload path.
 - The relevance floor of 0.6 was calibrated against 9 answerable questions and 27 unrelated
-  query/clause pairs, but that set is small and synthetic. It has not been validated against a large
-  labelled corpus of real user questions, so the exact value should be treated as a reasoned starting
-  point rather than a tuned one.
+ query/clause pairs, but that set is small and synthetic. It has not been validated against a large
+ labelled corpus of real user questions, so the exact value should be treated as a reasoned starting
+ point rather than a tuned one.
 
 ## Submission links
 
@@ -433,32 +433,32 @@ place of the upload form instead of throwing a 500.
 ## Four-minute demo script
 
 - **0:00–0:20:** "LexClear makes legal documents clearer; it provides general information, not legal
-  advice." Point at the persistent banner above every page.
+ advice." Point at the persistent banner above every page.
 - **0:20–0:55:** Sign in and upload a small lease PDF live. Point out the 10MB cap, the PDF/DOCX
-  check, and the notice that text is sent to Gemini.
+ check, and the notice that text is sent to Gemini.
 - **0:55–1:35:** Open the finished document. Show original clause text beside grade-8 language with
-  the category, the written risk label and the reason. Say that Gemini structured JSON powers it and
-  that the response is zod-validated before it is stored.
+ the category, the written risk label and the reason. Say that Gemini structured JSON powers it and
+ that the response is zod-validated before it is stored.
 - **1:35–2:15:** Type a live question such as "How much notice do I need to give?" Show the cited
-  answer, and explain that pgvector retrieves only this document's strongest passages before Gemini
-  answers. Ask something that is not in the document to show it refusing.
+ answer, and explain that pgvector retrieves only this document's strongest passages before Gemini
+ answers. Ask something that is not in the document to show it refusing.
 - **2:15–2:50:** Open Compare documents, pick two leases, and walk the material-terms table (rent,
-  deposit, notice, penalties). This is a second Gemini structured-output call.
+ deposit, notice, penalties). This is a second Gemini structured-output call.
 - **2:50–3:20:** Download the lawyer prep sheet: flagged clauses plus questions to bring to counsel.
 - **3:20–4:00:** Close on the engineering: RLS on every table, rate limiting and byte-level upload
-  checks, `axe-core` accessibility checks plus keyboard support in CI, and a clear boundary —
-  LexClear assists users, it never replaces a licensed lawyer.
+ checks, `axe-core` accessibility checks plus keyboard support in CI, and a clear boundary —
+ LexClear assists users, it never replaces a licensed lawyer.
 
 ## Author
 
 Built by **Sabarish R**.
 
-|           |                                           |
+| | |
 | --------- | ----------------------------------------- |
-| Email     | <sabarishr1087@gmail.com>                 |
-| Portfolio | <https://sabarishr08.vercel.app>          |
-| LinkedIn  | <https://www.linkedin.com/in/sabarishr08> |
-| GitHub    | <https://github.com/SabarishR08>          |
+| Email | <sabarishr1087@gmail.com> |
+| Portfolio | <https://sabarishr08.vercel.app> |
+| LinkedIn | <https://www.linkedin.com/in/sabarishr08> |
+| GitHub | <https://github.com/SabarishR08> |
 
 Every source file in this repository carries the same attribution in its header comment. Note that
 comments can be stripped in seconds — the MIT licence below is the part with legal force, and it
